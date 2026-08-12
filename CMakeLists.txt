@@ -34,5 +34,26 @@ target_include_directories(imgui PUBLIC vendor/imgui)
 add_library(nexus-api INTERFACE)
 target_include_directories(nexus-api INTERFACE sdk)
 
-# --- Addons -------------------------------------------------------------------
+# --- Header-only third-party libs (vendored single headers) -------------------
+# nlohmann-json (persistence, spec 003-01) and doctest (the super-build's first
+# unit-test framework). Single-header form is used instead of full submodules:
+# both ship as one header, so vendoring avoids pulling two large trees for one
+# file each. See vendor/nlohmann/json.hpp (v3.11.3), vendor/doctest/doctest.h
+# (v2.4.11).
+add_library(nlohmann-json INTERFACE)
+target_include_directories(nlohmann-json INTERFACE vendor)
+
+add_library(doctest INTERFACE)
+target_include_directories(doctest INTERFACE vendor)
+
+# --- Tests --------------------------------------------------------------------
+# enable_testing() at the top so `ctest` from the build root discovers tests
+# registered by subdirectories (notes-core-tests). The pure-logic libraries
+# (shared-core, notes-core) build and test on macOS/clang; the DLL targets are
+# Windows-only (guarded below).
+enable_testing()
+
+# --- Shared layer + addons ----------------------------------------------------
+add_subdirectory(shared)
+add_subdirectory(notes)
 add_subdirectory(hello)

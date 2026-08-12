@@ -1,0 +1,211 @@
+// gw2-nexus — Notes addon (spec 003, slice 003-01).
+//
+// The Nexus/ImGui glue around notes-core: a toolbar button + keybind that toggle
+// a panel where you create, edit, and delete plain-text notes that persist to
+// JSON in the addon directory (write-through — durability does not depend on
+// Unload; see notes/core/note_store.h and AC3).
+//
+// This file is Windows/MSVC-only (Nexus.h + ImGui + Windows.h). The testable
+// logic lives in notes-core, which builds and is unit-tested on macOS too.
+// Panel chrome is factored into RenderPanel() so the 003-06 9-slice theme can
+// wrap it without touching the note logic (AC5).
+
+#include <Windows.h>
+
+#include <algorithm>
+#include <filesystem>
+#include <string>
+#include <unordered_map>
+#include <vector>
+
+#include "imgui.h"
+#include "Nexus.h"
+
+#include "core/note_store.h"
+
+namespace {
+
+// Identifiers Nexus keys registrations by; must be stable across load/unload.
+constexpr const char* kKeybindId     = "KB_NOTES_TOGGLE";
+constexpr const char* kQuickAccessId = "QA_NOTES";
+constexpr const char* kWindowName    = "Notes";
+constexpr const char* kDefaultBind   = "ALT+SHIFT+N";
+
+// Nexus built-in toolbar icons. A themed Notes icon is deferred to the native-
+// look slice; using a built-in keeps 003-01 free of bundled art.
+// TODO(003-06): replace with a themed Notes icon loaded via Textures_*.
+constexpr const char* kIconId      = "ICON_NEXUS";
+constexpr const char* kIconHoverId = "ICON_NEXUS_HOVER";
+
+AddonDefinition_t g_AddonDef{};
+AddonAPI_t*       g_API   = nullptr;
+notes::NoteStore* g_Store = nullptr;
+bool              g_PanelOpen = false;
+
+// Per-note editable text buffers, keyed by note id. Kept out of notes-core so
+// the core stays UI-agnostic. ImGui 1.80's InputText needs a mutable char
+// buffer; we commit into the store on edit-commit (field deactivation), which
+// coalesces a burst of keystrokes into one write-through.
+std::unordered_map<std::string, std::vector<char>> g_EditBuffers;
+
+constexpr size_t kNoteBufSize = 4096; // MVP cap; TODO: grow via CallbackResize.
+
+std::vector<char>& BufferFor(const notes::Note& note)
+{
+    auto it = g_EditBuffers.find(note.id);
+    if (it == g_EditBuffers.end())
+    {
+        std::vector<char> buf(kNoteBufSize, '\0');
+        const size_t n = (std::min)(note.text.size(), kNoteBufSize - 1);
+        std::copy_n(note.text.data(), n, buf.begin());
+        it = g_EditBuffers.emplace(note.id, std::move(buf)).first;
+    }
+    return it->second;
+}
+
+// The panel body. Factored so the 003-06 theme can wrap it with a 9-slice frame
+// without reworking the note logic (AC5).
+void RenderPanel()
+{
+    if (!g_Store) { return; }
+
+    if (ImGui::Button("+ Add note"))
+    {
+        g_Store->add(std::string{});
+    }
+    ImGui::Separator();
+
+    std::string to_delete; // defer deletion until after the loop
+
+    for (const auto& note : g_Store->notes())
+    {
+        ImGui::PushID(note.id.c_str());
+
+        std::vector<char>& buf = BufferFor(note);
+        ImGui::InputTextMultiline(
+            "##text", buf.data(), buf.size(),
+            ImVec2(-1.0f, ImGui::GetTextLineHeight() * 3.0f));
+        // Commit on edit-commit (field lost focus after an edit): one durable
+        // write-through per committed edit rather than per keystroke.
+        if (ImGui::IsItemDeactivatedAfterEdit())
+        {
+            g_Store->edit(note.id, std::string(buf.data()));
+        }
+
+        if (ImGui::Button("Delete")) { to_delete = note.id; }
+
+        ImGui::Separator();
+        ImGui::PopID();
+    }
+
+    if (!to_delete.empty())
+    {
+        g_Store->remove(to_delete);
+        g_EditBuffers.erase(to_delete);
+    }
+}
+
+// Registered as an RT_Render callback; Nexus calls it every frame.
+void AddonRender()
+{
+    if (!g_PanelOpen) { return; }
+
+    const ImVec2 display = ImGui::GetIO().DisplaySize;
+    ImGui::SetNextWindowPos(ImVec2(display.x * 0.5f, display.y * 0.5f),
+                            ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowSize(ImVec2(360.0f, 420.0f), ImGuiCond_FirstUseEver);
+
+    // Minimal, unobtrusive chrome (AC5) — NOT the ornate look (that is 003-06).
+    const ImGuiWindowFlags flags = ImGuiWindowFlags_NoCollapse;
+    if (ImGui::Begin(kWindowName, &g_PanelOpen, flags))
+    {
+        RenderPanel();
+    }
+    ImGui::End();
+}
+
+// Keybind handler (INPUTBINDS_PROCESS): toggle the panel on press.
+void OnKeybind(const char* /*aIdentifier*/, bool aIsRelease)
+{
+    if (!aIsRelease) { g_PanelOpen = !g_PanelOpen; }
+}
+
+void AddonLoad(AddonAPI_t* aApi)
+{
+    g_API = aApi;
+
+    // Adopt Nexus's shared ImGui context + allocators (ImGui 1.80 — raw
+    // function-pointer casts, no ImGuiMemAllocFunc typedef). Same idiom as hello.
+    ImGui::SetCurrentContext(static_cast<ImGuiContext*>(aApi->ImguiContext));
+    ImGui::SetAllocatorFunctions(
+        reinterpret_cast<void* (*)(size_t, void*)>(aApi->ImguiMalloc),
+        reinterpret_cast<void  (*)(void*, void*)>(aApi->ImguiFree));
+
+    // Persist under "<GW2>/addons/notes/notes.json" (per-account JSON, AC3).
+    std::filesystem::path dir =
+        aApi->Paths_GetAddonDirectory ? aApi->Paths_GetAddonDirectory("notes")
+                                      : std::filesystem::path("notes");
+    g_Store = new notes::NoteStore(dir / "notes.json");
+
+    aApi->GUI_Register(RT_Render, AddonRender);
+
+    if (aApi->InputBinds_RegisterWithString)
+    {
+        aApi->InputBinds_RegisterWithString(kKeybindId, OnKeybind, kDefaultBind);
+    }
+    if (aApi->QuickAccess_Add)
+    {
+        aApi->QuickAccess_Add(kQuickAccessId, kIconId, kIconHoverId,
+                              kKeybindId, "Notes");
+    }
+
+    if (aApi->Log) { aApi->Log(LOGL_INFO, "gw2-nexus", "notes addon loaded"); }
+}
+
+void AddonUnload()
+{
+    if (g_API)
+    {
+        if (g_API->GUI_Deregister)        { g_API->GUI_Deregister(AddonRender); }
+        if (g_API->InputBinds_Deregister) { g_API->InputBinds_Deregister(kKeybindId); }
+        if (g_API->QuickAccess_Remove)    { g_API->QuickAccess_Remove(kQuickAccessId); }
+    }
+
+    // Best-effort final flush (AC6). Durability does not depend on this — every
+    // committed edit was already written through (AC3).
+    if (g_Store) { g_Store->flush(); }
+
+    delete g_Store;
+    g_Store = nullptr;
+    g_EditBuffers.clear();
+    g_API = nullptr;
+}
+
+} // namespace
+
+extern "C" __declspec(dllexport) AddonDefinition_t* GetAddonDef()
+{
+    g_AddonDef.Signature   = 0x6E6F7465; // "note" — unique, distinct from hello
+    g_AddonDef.APIVersion  = NEXUS_API_VERSION;
+    g_AddonDef.Name        = "gw2-nexus Notes";
+    g_AddonDef.Version     = AddonVersion_t{ 0, 1, 0, 0 };
+    g_AddonDef.Author      = "Kyarha";
+    g_AddonDef.Description = "In-game sticky notes: create, edit, delete plain-text notes that persist across sessions.";
+    g_AddonDef.Load        = AddonLoad;
+    g_AddonDef.Unload      = AddonUnload;
+    g_AddonDef.Flags       = AF_None;
+    // Umbrella build: no auto-update until extracted to its own repo (ADR-0002).
+    g_AddonDef.Provider    = UP_None;
+    g_AddonDef.UpdateLink  = nullptr;
+    return &g_AddonDef;
+}
+
+BOOL APIENTRY DllMain(HMODULE hModule, DWORD ulReasonForCall, LPVOID /*lpReserved*/)
+{
+    switch (ulReasonForCall)
+    {
+        case DLL_PROCESS_ATTACH: DisableThreadLibraryCalls(hModule); break;
+        case DLL_PROCESS_DETACH: break;
+    }
+    return TRUE;
+}
