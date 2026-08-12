@@ -1,0 +1,28 @@
+# Builds the addon on Windows (MSVC + CMake, x64) on every push so development
+# can happen on macOS while the artifact is a Windows DLL. Spec 002.
+name: build
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  windows-build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure (x64)
+        run: cmake -B build -A x64
+
+      - name: Build (Release)
+        run: cmake --build build --config Release
+
+      - name: Upload hello.dll
+        uses: actions/upload-artifact@v4
+        with:
+          name: hello-dll
+          path: build/**/hello.dll
+          if-no-files-found: error
