@@ -87,9 +87,10 @@ spikes it. The spike's outcome **branches** what 003-04 builds — it is not
 "research, then ship one big slab," which would be horizontal phasing.
 
 - **003-01 (Path + minimal Data + Interface)** — the thinnest whole note: a
-  themed panel, openable via toolbar/hotkey on any character, into which you type
-  plain-text notes that persist to JSON and reload next session. Delivers UC-1 +
-  UC-13 on its own.
+  functional panel, openable via toolbar/hotkey on any character, into which you
+  type plain-text notes that persist to JSON and reload next session. Delivers
+  UC-1 + UC-13 on its own. Ships with a minimal re-skinnable container; the ornate
+  look is 003-06 ([ADR-0003](../../decisions/adr-0003-native-look-tier.md)).
 - **003-02 (Data axis)** — enrich the note record with an *optional coordinate*
   captured from the player's current position (A1) and shown on the note. No
   actions yet: knowing "this note is about *here*" is value, and it de-risks the
@@ -111,6 +112,12 @@ spikes it. The spike's outcome **branches** what 003-04 builds — it is not
   be parked as `DEFERRED` if priorities shift, and can itself split along the
   Rules axis (per-character vs. map-auto-surface) if it proves too large when
   picked up.
+- **003-06 (cross-cutting — native-look theme)** — the ornate GW2-native look
+  ([ADR-0003](../../decisions/adr-0003-native-look-tier.md)): a 9-slice frame
+  renderer in `shared/theme` (inherited by every future addon, principle #6) that
+  re-skins the Notes panel. Split out of 003-01 because it is cross-cutting and
+  blocked on original border art — the functional note ships first, the ornate
+  look lands when art exists. Not on the coordinate spine; depends only on 003-01.
 
 **Anti-horizontal-phasing check:** 003-01/02/04/05 each end with something the
 player sees and does in-game (a persisted note, a note stamped with a place, a
@@ -118,17 +125,17 @@ clickable coordinate, an auto-surfacing note). 003-03 is a bounded spike that
 ends in a decision — explicitly the S axis, nested here by design, not a
 disguised "build it all later" phase.
 
-**Cross-cutting decisions this spec triggers** (surfaced, not resolved here —
-resolved during the relevant slice's planning):
+**Cross-cutting decisions this spec triggers** (resolved at start of 003-01):
 
-- **First-addon extraction & `shared/` consumption** — Notes is the first real
-  addon. Whether the MVP builds inside the umbrella (like `hello/`) or is
-  extracted to `Kyarha/gw2-notes` + `Kyarha/gw2-shared` now, and how `shared/`
-  is consumed, is the [refinement-todo](../../refinement-todo.md) trigger
-  "first addon extracted to its own repo." Decided at 003-01 planning (ADR),
-  per [ADR-0001](../../decisions/adr-0001-repo-topology-versioning.md).
-- **Native-look ADR** — 003-01 is "the first Notes UI spec that styles a panel,"
-  the refinement-todo trigger for the "how far to push the native look" ADR.
+- **First-addon repo topology** — RESOLVED by
+  [ADR-0002](../../decisions/adr-0002-first-addon-repo-topology.md): `notes/` +
+  `shared/` build as umbrella folders now; extraction to `Kyarha/gw2-notes` +
+  `Kyarha/gw2-shared` (and the GitHub update provider) happens at first release.
+  The cross-repo `shared/`-consumption question
+  ([refinement-todo](../../refinement-todo.md)) stays deferred to that extraction.
+- **Native-look tier** — RESOLVED by
+  [ADR-0003](../../decisions/adr-0003-native-look-tier.md): ornate 9-slice frames,
+  delivered as the dedicated theme slice 003-06, not folded into 003-01.
 - **New dependency: JSON library** — persistence (003-01) introduces nlohmann-json
   (architecture.md's stated convention); recorded at reconciliation.
 
@@ -144,3 +151,6 @@ resolved during the relevant slice's planning):
    share-to-chat (feasible subset + clipboard fallback). *(UC-6, UC-7)*
 5. [003-05 — context-aware notes](slice-05-context-aware.md) — per-character and
    map-tagged auto-surface (optional; may be `DEFERRED`). *(UC-9, UC-10)*
+6. [003-06 — native-look theme](slice-06-native-look-theme.md) — ornate 9-slice
+   frame in `shared/theme`, re-skins the Notes panel; blocked on original art.
+   *(design principle #1 / #6; off the coordinate spine)*

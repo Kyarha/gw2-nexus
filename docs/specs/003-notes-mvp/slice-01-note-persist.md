@@ -1,6 +1,6 @@
 ---
 status: DRAFT
-dependencies: [002-01, adr-0001]
+dependencies: [002-01, adr-0001, adr-0002]
 last_verified:
 arch_review: true
 frame_review: true
@@ -20,15 +20,17 @@ and UC-13 (reachable anywhere, any character).
 **DoR (Definition of Ready):**
 - ✅ Spec 002-01 DONE — the walking skeleton (x64 DLL, Nexus-API submodule,
   ImGui render path, CI) exists to build on.
-- ⚠️ **First-addon topology decided.** Before implementation: decide whether this
-  MVP builds inside the umbrella (`notes/`, like `hello/`) or is extracted to
-  `Kyarha/gw2-notes` (+ `Kyarha/gw2-shared`) now, and how `shared/` (or an inline
-  minimal persistence helper) is consumed — the
-  [refinement-todo](../../refinement-todo.md) "first addon extracted" trigger and
-  [ADR-0001](../../decisions/adr-0001-repo-topology-versioning.md). Record via ADR.
-- ⚠️ **Native-look ADR opened.** This is the first styled panel — the
-  refinement-todo "how far to push the native look" trigger. Decide the MVP tier
-  (tasteful themed panel vs. ornate frames) and record it before styling.
+- ✅ **First-addon topology decided** —
+  [ADR-0002](../../decisions/adr-0002-first-addon-repo-topology.md): `notes/` and
+  a new `shared/` build as **plain folders in the umbrella super-build** (like
+  `hello/`); extraction to `Kyarha/gw2-notes` + `Kyarha/gw2-shared` and the
+  GitHub update provider happen at first release, not now. The cross-repo
+  `shared/`-consumption question stays deferred to its trigger.
+- ✅ **Native-look tier decided** —
+  [ADR-0003](../../decisions/adr-0003-native-look-tier.md): ornate 9-slice frames,
+  delivered by a **dedicated theme slice ([003-06](slice-06-native-look-theme.md))**
+  in `shared/theme`, **not** by this slice. 003-01 ships the *functional* note
+  with a minimal container; ornate fidelity is gated on 003-06, not here.
 - ✅ JSON library pinned (nlohmann-json per
   [architecture.md § Tech stack](../../architecture.md)).
 
@@ -49,10 +51,13 @@ and UC-13 (reachable anywhere, any character).
    a clean unload.
 4. **The record is versioned.** The JSON carries a top-level schema version field
    so later slices (coordinate, tags) can migrate it forward without data loss.
-5. **The panel reads as native, not a debug box.** It uses the shared theme
-   (dark translucent panel, warm gold/bronze trim per the native-look ADR from
-   DoR) — not the default grey ImGui window (design principle #1). Fidelity is
-   the *tasteful themed* tier, eyeballed at review; not a servo-gated pixel match.
+5. **The panel is a clean functional container, structured to be re-skinned.**
+   Slice 003-01 ships a minimal, unobtrusive panel — NOT the final ornate look
+   (that is [003-06](slice-06-native-look-theme.md), per
+   [ADR-0003](../../decisions/adr-0003-native-look-tier.md)). The panel's chrome
+   (window flags, padding, title, background) is factored so the 003-06 9-slice
+   frame can wrap it without reworking the note logic. No ornate-fidelity claim is
+   made or gated here; "reads as native" is 003-06's acceptance criterion.
 6. **It unloads cleanly.** `Unload` flushes pending writes, deregisters the
    render callback, keybind, and toolbar entry, and frees everything registered,
    so Nexus can unload/reload while the game runs without a crash or leak
@@ -72,8 +77,9 @@ and UC-13 (reachable anywhere, any character).
       notes module and its `shared/` boundary).
 - [ ] Deviation log + reconciliation sweep produced under this slice heading.
 - [ ] Reconciliation review passed.
-- [ ] `docs/refinement-todo.md` updated (topology + native-look triggers
-      resolved or explicitly re-deferred).
+- [ ] `docs/refinement-todo.md` re-checked (native-look trigger already resolved
+      by ADR-0003; topology timing by ADR-0002; the cross-repo `shared/`-consumption
+      item stays deferred to first extraction — confirm no new deferral needed).
 
 ## Assumptions
 
