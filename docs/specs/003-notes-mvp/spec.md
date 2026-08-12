@@ -1,5 +1,5 @@
 ---
-status: DRAFT
+status: IN_PROGRESS
 use_cases: [UC-1, UC-6, UC-7, UC-9, UC-10, UC-13]
 ---
 
@@ -39,10 +39,11 @@ foundation, now with persistence, player-state reads, and a real feature.
   follow, its own spec.
 - **Clickable game-entity references** (UC-8) — the first use of the live GW2 API;
   the vision scopes this as the separate "fast follow" epic after the Notes MVP.
-- **Pixel-perfect ornate frames** — the "how far to push the native look"
-  question ([refinement-todo](../../refinement-todo.md)) is triggered by this
-  spec's first styled panel (003-01) and resolved via an ADR at that point; the
-  MVP ships a *tasteful themed* panel, not an art-asset project.
+
+The native-look question is **in scope** but split off: ADR-0003 resolved it to
+ornate 9-slice frames, delivered by the dedicated theme slice
+[003-06](slice-06-native-look-theme.md) so the functional note (003-01) is not
+blocked on art.
 
 ## Assumptions
 
