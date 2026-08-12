@@ -4,7 +4,7 @@
 > [product-vision.md](product-vision.md). Update via reconciliation after each
 > spec slice completes.
 
-# Architecture: nexus
+# Architecture: gw2-nexus
 
 > For *what this project is*, *who it's for*, and *why*, see
 > [product-vision.md](product-vision.md). This document covers the technical
@@ -12,32 +12,40 @@
 
 ## Repository structure
 
-<!-- elicited: PENDING / status: unfilled -->
+<!-- elicited: 2026-08-12 / status: filled / hash: sha256:0c846c061184 -->
 
-> _The top-level layout of this codebase. One line per directory beats nothing —
-> it's the easiest place for a new contributor to start. Replace the placeholder
-> below with the real tree once it exists._
+Planned layout (the addon folders arrive as their specs land; only the docs
+workspace exists today):
 
 ```
-nexus/
-├── (top-level directory)         # (one-line purpose)
-├── (top-level directory)         # (one-line purpose)
-└── ...
+gw2-nexus/
+├── CLAUDE.md          # project primer for Claude Code
+├── CMakeLists.txt     # root build — adds shared/ and each addon as a target
+├── sdk/               # Nexus-API headers (git submodule, MIT)
+├── shared/            # common layer: theme, settings persistence, GW2 API client
+├── notes/             # Notes addon (MVP)
+├── markers/           # Markers addon (later)
+├── tracker/           # Legendary / Bank tracker addon (later)
+└── docs/              # vision, architecture, specs, decisions (jig workspace)
 ```
 
 ## Tech stack
 
-<!-- elicited: PENDING / status: unfilled -->
+<!-- elicited: 2026-08-12 / status: filled / hash: sha256:e81206ba9bca -->
 
-> **Deferred — no signal from initial pitch.** Will be decided in the first
-> spec that requires a runtime/language choice. Each locked-in decision below
-> should get its own ADR under `docs/decisions/`.
-
-- **Runtime / language:** (...)
-- **Platform commitments:** (...)
-- **Package manager:** (...)
-- **Database / state:** (...)
-- **Key external services:** (...)
+- **Runtime / language:** native C++, compiled to 32-bit Windows DLLs. Each addon
+  exports `GetAddonDef()` → `AddonDefinition_t` and receives the Nexus API
+  function table in `Load(AddonAPI_t*)`.
+- **Platform commitments:** Windows; Guild Wars 2 via the RaidcoreGG Nexus
+  loader; Dear ImGui for UI (Nexus shares one ImGui context, set current in
+  `Load`).
+- **Package manager / build:** CMake; dependencies as git submodules
+  (`RaidcoreGG/Nexus-API` (MIT), Dear ImGui) plus vendored / bundled data.
+- **Database / state:** none — per-addon JSON in the addon directory
+  (nlohmann-json convention), bundled static datasets, and on-disk caches of
+  static GW2 API data.
+- **Key external services:** the official GW2 API (`api.guildwars2.com/v2`) over
+  HTTPS (libcurl / WinHTTP); item icons from `render.guildwars2.com`.
 
 ## Core architecture decisions
 
@@ -47,48 +55,60 @@ nexus/
 > (technical detail). This section is the running summary; decisions
 > themselves live in `docs/decisions/`._
 
-_(No decisions recorded yet. Add the first H3 when the first ADR accepts.)_
+_(No decisions recorded yet. The build-skeleton spec will promote the tech-stack
+choice — C++/CMake + the MIT `Nexus-API` submodule + Dear ImGui — to the first
+ADR. See [inbox.md](inbox.md).)_
 
 ## Module boundaries
 
-<!-- elicited: PENDING / status: unfilled -->
+<!-- elicited: 2026-08-12 / status: filled / hash: sha256:4547541f0007 -->
 
-> **Deferred — no modules yet.** Boundaries become explicit when the first
-> contract is defined. Until then, name the top-level *concerns* even if their
-> interfaces aren't formal yet — "today's coupling is one-directional read-only"
-> is a valid answer.
+- **`shared/`** — the common layer every addon inherits: a **theme** module
+  (GW2-native ImGui styling), **settings persistence** (JSON read/write via the
+  addon directory), and a **GW2 API client** (auth, on-disk caching,
+  rate-limit / backoff handling).
+- **Per-addon modules** (`notes`, `markers`, `tracker`) — each a self-contained
+  DLL that depends on `shared/` and the Nexus-API. No addon depends on another
+  addon.
+- **Nexus integration** — each addon registers a per-frame render callback,
+  keybinds, and a quick-access toolbar entry, and reads player state
+  (position, camera, `map_id`, character name, UI-state bits) from
+  MumbleLink / NexusLink.
 
-- (top-level concern 1)
-- (top-level concern 2)
-- (top-level concern 3)
+**Coupling today:** addons depend one-directionally on `shared/`; there is no
+addon-to-addon coupling. Interfaces firm up as the first addon (Notes) is built.
 
 ## Data model
 
-<!-- elicited: PENDING / status: unfilled -->
+<!-- elicited: 2026-08-12 / status: filled / hash: sha256:db72951ac486 -->
 
-> _The state this project owns. "Stateless" or "minimal — config files only"
-> is a valid and honest answer for small projects; name it explicitly rather
-> than leaving the section blank._
-
-- (state element 1 — what it is, where it lives)
-- (state element 2 — what it is, where it lives)
+- **Notes** — per-account JSON in the Notes addon folder: note text, optional
+  coordinates, optional map / character tags, and world-pin positions.
+- **Settings** — a per-addon `settings.json`.
+- **GW2 API key** — stored locally on disk; sent only to the official API, never
+  elsewhere (see product-vision.md, "Private by default").
+- **Bundled datasets** (offline-friendly) — gathering-node locations and
+  legendary recipe trees, shipped with the addon and versioned.
+- **Caches** — static GW2 data (items, currencies, materials, recipe tree)
+  cached on disk indefinitely; account data fetched on demand / every few
+  minutes (it is eventually-consistent, not real-time).
 
 ## Contract surfaces
 
-<!-- elicited: PENDING / status: unfilled -->
+<!-- elicited: 2026-08-12 / status: filled / hash: sha256:d1f2f5f0e09a -->
 
-> _External interfaces this project commits to as caller-facing surfaces.
-> Populated by `/jig:vision-elicitation` Section 13 (added by spec 022-02);
-> consumed by `/jig:independent-review`'s reviewer-prompt conditional
-> contract-surface check and by `/jig:migrate report`'s "Contract surfaces
-> detected" section. "No external surfaces — this project is a library /
-> script / single-consumer internal tool" is a valid and honest answer;
-> the section's elicitation marker stays `status: skipped` rather than
-> being filled with a negation bullet. Run `/jig:contracts` for the
-> per-surface recommendation table this elicitation references._
+These are end-user GUI addons, not a library or service — so the project commits
+**no caller-facing external API** to third parties. The relevant contracts are
+the two it **consumes**:
 
-- (surface 1 — **<surface type>** (recommended artifact: <name> at `<path>`) — brief description)
-- (surface 2 — same shape)
+- **Nexus addon C API** (consumed) — the `AddonAPI_t` function table from the MIT
+  `RaidcoreGG/Nexus-API` submodule (`sdk/`). Pinned by the submodule commit; no
+  artifact of ours.
+- **Official GW2 REST API** (consumed) — `api.guildwars2.com/v2`, Bearer-token
+  auth. External, versioned by ArenaNet; we depend on it, we do not define it.
+
+The only shapes this project owns are each addon's private JSON persistence files
+(versioned by the addon itself), which are not a caller-facing surface.
 
 ## Open questions
 
