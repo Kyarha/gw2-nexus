@@ -31,11 +31,12 @@ gw2-nexus/
 
 ## Tech stack
 
-<!-- elicited: 2026-08-12 / status: filled / hash: sha256:e81206ba9bca -->
+<!-- elicited: 2026-08-12 / status: filled / hash: sha256:c1f44c79918c -->
 
-- **Runtime / language:** native C++, compiled to 32-bit Windows DLLs. Each addon
-  exports `GetAddonDef()` → `AddonDefinition_t` and receives the Nexus API
-  function table in `Load(AddonAPI_t*)`.
+- **Runtime / language:** native C++, compiled to 64-bit (x64) Windows DLLs
+  (Nexus is `d3d11.dll` alongside the 64-bit `Gw2-64.exe`). Each addon exports
+  `GetAddonDef()` → `AddonDefinition_t` and receives the Nexus API function
+  table in `Load(AddonAPI_t*)`.
 - **Platform commitments:** Windows; Guild Wars 2 via the RaidcoreGG Nexus
   loader; Dear ImGui for UI (Nexus shares one ImGui context, set current in
   `Load`).
@@ -46,6 +47,12 @@ gw2-nexus/
   static GW2 API data.
 - **Key external services:** the official GW2 API (`api.guildwars2.com/v2`) over
   HTTPS (libcurl / WinHTTP); item icons from `render.guildwars2.com`.
+- **Build & dev environment:** code is written on macOS (Apple Silicon), but the
+  artifact is a Windows x64 `.dll`, so builds run on a Windows toolchain — the
+  GitHub Actions Windows runner (MSVC + CMake) is the canonical build. In-game
+  testing runs on Guild Wars 2 under **CrossOver on Apple Silicon**, a
+  confirmed-working path for Nexus addons (the maintainer runs Nexus addons
+  there today).
 
 ## Core architecture decisions
 

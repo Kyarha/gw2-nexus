@@ -143,10 +143,11 @@ combines place- and character-aware notes, world markers, and account-aware
 
 ## Stack
 
-<!-- elicited: 2026-08-12 / status: filled / hash: sha256:9f0ab364fa47 -->
+<!-- elicited: 2026-08-12 / status: filled / hash: sha256:33f7ec207a6a -->
 
-- **Runtime / language:** native C++, compiled to 32-bit Windows DLLs (the Nexus
-  addon shape).
+- **Runtime / language:** native C++, compiled to 64-bit (x64) Windows DLLs (the
+  Nexus addon shape). Written on macOS (Apple Silicon), built on a Windows
+  toolchain (GitHub CI), tested in-game via CrossOver on Apple Silicon.
 - **Platform commitments:**
   - Cloud target: none — runs locally inside Guild Wars 2 on Windows.
   - Deployment shape: per-addon `.dll` dropped into the game's `addons/` folder,
@@ -161,7 +162,7 @@ combines place- and character-aware notes, world markers, and account-aware
 
 ## Design principles & constraints
 
-<!-- elicited: 2026-08-12 / status: filled / hash: sha256:abf30c88ba2c -->
+<!-- elicited: 2026-08-12 / status: filled / hash: sha256:7ab0fa9ff519 -->
 
 1. **Native look is a first-class requirement, not polish.** The overlay must
    read as belonging to GW2 — dark translucent panels, warm gold / bronze trim,
@@ -179,7 +180,7 @@ combines place- and character-aware notes, world markers, and account-aware
 6. **One consistent look across addons.** A shared theme layer so every addon
    inherits the same GW2-native styling rather than each reinventing it.
 
-**Non-obvious constraints:** addons are 32-bit C++ DLLs; Nexus / MumbleLink
+**Non-obvious constraints:** addons are 64-bit (x64) C++ DLLs; Nexus / MumbleLink
 cannot expose which in-game panel is open (only map-open, textbox-focus,
 in-combat, and game-focus are visible); the GW2 API is eventually-consistent
 (~minutes) and rate-limited (burst 300, refill 5/s); GW2's own textures and
