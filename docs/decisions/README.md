@@ -7,7 +7,7 @@
 
 ## Index
 
-_No ADRs yet. First ADR will be written when the first architectural decision is made._
+- [ADR-0001: Umbrella project with per-addon repos and per-addon versioning](adr-0001-repo-topology-versioning.md) — `gw2-nexus` is a family of several Guild Wars 2 Nexus addons (Notes, Markers, a Legendary/Bank tracker) that share a build and a `shared/` helper layer. (2026-08-12, Accepted)
 
 ## Format
 

@@ -17,7 +17,7 @@
 
 ### Decision: How `shared/` is consumed across per-addon repos
 **Deferred:** Per ADR-0001 each addon is its own repo but they all depend on the `gw2-shared` helper layer. Whether `shared` is a submodule inside each addon repo, a vendored copy, or a published/packaged library is undecided.
-**Resolution trigger:** When the second addon starts (the first point two repos need `shared`). Record via an ADR.
+**Resolution trigger:** The **first** addon extracted to its own repo (the foundation keeps `shared` + the hello addon in the umbrella, so this is forced the moment `gw2-notes` must build standalone against `shared`, not at the second addon). Record via an ADR.
 
 ## Conventions
 

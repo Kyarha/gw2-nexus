@@ -69,9 +69,19 @@ at that repo (ADR-0001).
 > (technical detail). This section is the running summary; decisions
 > themselves live in `docs/decisions/`._
 
-_(No decisions recorded yet. The build-skeleton spec will promote the tech-stack
-choice — C++/CMake + the MIT `Nexus-API` submodule + Dear ImGui — to the first
-ADR. See [inbox.md](inbox.md).)_
+### Repo topology & addon versioning — [ADR-0001](decisions/adr-0001-repo-topology-versioning.md)
+
+- **Principle:** ship each addon the standard Nexus way, so players get normal
+  in-loader auto-update.
+- **Mechanics:** umbrella project (`gw2-nexus`) links each addon + `shared` as
+  git submodules; each addon is its own GitHub repo, independently versioned
+  (SemVer, `vMAJOR.MINOR.PATCH` tag = compiled `AddonDefinition.Version`), one
+  `.dll` per release, `Provider = GitHub` pointed at its own repo. Forced by
+  Nexus's updater treating one repo as exactly one addon.
+
+_(The tech-stack choice — C++/CMake + the MIT `Nexus-API` submodule + Dear ImGui —
+will be promoted to its own ADR with the build-skeleton spec. See
+[inbox.md](inbox.md).)_
 
 ## Module boundaries
 
