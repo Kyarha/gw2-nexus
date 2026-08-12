@@ -7,6 +7,11 @@ project(gw2-nexus LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Static CRT (/MT): make each addon DLL self-contained so it loads without the
+# MSVC redistributable present — important under Wine/CrossOver, and the
+# convention injected GW2 addons follow. Applies to imgui + every addon target.
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
 # Nexus loads into the 64-bit game process — x64 only.
 if(MSVC AND NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
   message(FATAL_ERROR "gw2-nexus addons must be built for x64 (configure with -A x64).")

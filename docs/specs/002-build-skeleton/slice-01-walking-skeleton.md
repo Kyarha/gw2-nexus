@@ -88,3 +88,17 @@ by AC7):
 - The addon's `Signature` value (unique per-addon int) and the exact
   `GetAddonDef` field set — pin against the current Nexus-API header when
   implementing.
+
+### Frame-critique residuals (addressed)
+
+The pre-build frame-critique (`docs/specs/002-build-skeleton/reviews/slice-01-frame-critique.md`,
+verdict: pass) raised two non-blocking residuals, both resolved in implementation:
+
+- **ImGui version pinning.** `Nexus.h` exposes ImGui only as `void*`, so the
+  Nexus-API submodule does not supply ImGui; the addon includes its own. Pinned
+  via the `vendor/imgui` submodule = `RaidcoreGG/imgui19270` (Dear ImGui 1.92.7,
+  the Nexus-compatible build), matching Nexus's ImGui ABI. Runtime-proven by AC7.
+- **CRT linkage.** A default MSVC build links the CRT dynamically (`/MD`), so the
+  DLL would need the MSVC redistributable present in the CrossOver bottle to
+  load. Switched to static CRT (`/MT`, `CMAKE_MSVC_RUNTIME_LIBRARY`) so the DLL
+  is self-contained — the convention for injected GW2 addons.
