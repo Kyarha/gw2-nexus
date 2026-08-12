@@ -1,9 +1,8 @@
 ---
-status: RECONCILED
+status: DONE
 dependencies: [adr-0001]
 last_verified: 2026-08-12
 frame_review: true
-claimed_by: main
 ---
 
 ## Slice 002-01 — walking-skeleton

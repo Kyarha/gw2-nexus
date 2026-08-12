@@ -16,4 +16,12 @@
 | Spec | Slice | Status | Notes |
 |------|-------|--------|-------|
 | [001-adopt-jig](001-adopt-jig/spec.md) | 001-01 — bootstrap | **DONE** | worked example; review boxes satisfied by deterministic completion check |
-| [002-build-skeleton](002-build-skeleton/spec.md) | 002-01 — walking-skeleton | DRAFT |  |
+| [002-build-skeleton](002-build-skeleton/spec.md) | 002-01 — walking-skeleton | **DONE** |  |
+
+## Richer-skill selection audit (spec 096-05)
+
+Advisory (ADR-0040 auditability — never blocks). Regenerated from `reviews/slice-*.md` `substrate:` fields.
+
+- **1** pass(es) recorded `not-shown` (selection step did not run — the kill-criterion-1 defect signal).
+- **0** pass(es) recorded `non-interactive` (declared no-orchestrator / CI).
+- **0** shown-and-declined anomaly(ies) (a high-confidence richer skill was shown and not applied):
