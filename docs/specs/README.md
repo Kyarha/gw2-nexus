@@ -16,6 +16,4 @@
 | Spec | Slice | Status | Notes |
 |------|-------|--------|-------|
 | [001-adopt-jig](001-adopt-jig/spec.md) | 001-01 — bootstrap | **DONE** | worked example; review boxes satisfied by deterministic completion check |
-| [002-first-spec](002-first-spec/spec.md) | 002-01 — replace-me | DRAFT | replace with your first real spec — run `/jig:spec-workflow` |
-
-<!-- Regenerate with `workflow.py status-board`. Add rows as specs are created. -->
+| [002-build-skeleton](002-build-skeleton/spec.md) | 002-01 — walking-skeleton | DRAFT |  |
