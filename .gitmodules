@@ -3,4 +3,4 @@
 	url = https://github.com/RaidcoreGG/Nexus-API
 [submodule "vendor/imgui"]
 	path = vendor/imgui
-	url = https://github.com/RaidcoreGG/imgui19270
+	url = https://github.com/RaidcoreGG/imgui

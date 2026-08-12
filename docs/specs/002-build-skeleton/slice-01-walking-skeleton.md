@@ -95,9 +95,16 @@ The pre-build frame-critique (`docs/specs/002-build-skeleton/reviews/slice-01-fr
 verdict: pass) raised two non-blocking residuals, both resolved in implementation:
 
 - **ImGui version pinning.** `Nexus.h` exposes ImGui only as `void*`, so the
-  Nexus-API submodule does not supply ImGui; the addon includes its own. Pinned
-  via the `vendor/imgui` submodule = `RaidcoreGG/imgui19270` (Dear ImGui 1.92.7,
-  the Nexus-compatible build), matching Nexus's ImGui ABI. Runtime-proven by AC7.
+  Nexus-API submodule does not supply ImGui; the addon includes its own, and it
+  **must be the exact ImGui version the running Nexus host links**. First build
+  used `RaidcoreGG/imgui19270` (1.92.7) and **crashed on first render** in-game
+  (AC7): the shipping Nexus host `2026.2.17.1210` still vendors **ImGui v1.80**
+  (confirmed in `RaidcoreGG/Nexus` `thirdparty/imgui/imgui.h`). imgui19270 is a
+  forward-looking build for a future Nexus. Fixed by pinning `vendor/imgui` to
+  `RaidcoreGG/imgui` (v1.80) — the build the official `Nexus-Template-cpp` uses.
+  Also required 1.80-compatible code: raw allocator function-pointer casts (no
+  `ImGuiMemAllocFunc` typedef in 1.80) and display-size centering (no
+  `GetMainViewport()` in 1.80). Rule: track the host's ImGui version.
 - **CRT linkage.** A default MSVC build links the CRT dynamically (`/MD`), so the
   DLL would need the MSVC redistributable present in the CrossOver bottle to
   load. Switched to static CRT (`/MT`, `CMAKE_MSVC_RUNTIME_LIBRARY`) so the DLL

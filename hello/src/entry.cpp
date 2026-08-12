@@ -20,6 +20,14 @@ void AddonRender()
 {
     if (!g_WindowOpen) { return; }
 
+    // Center the window on first appearance so it can't be missed; the user can
+    // move it afterwards. (GetMainViewport() doesn't exist in ImGui 1.80, so
+    // center via the display size.)
+    const ImVec2 display = ImGui::GetIO().DisplaySize;
+    ImGui::SetNextWindowPos(ImVec2(display.x * 0.5f, display.y * 0.5f),
+                            ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowSize(ImVec2(340.0f, 130.0f), ImGuiCond_FirstUseEver);
+
     if (ImGui::Begin("gw2-nexus \xE2\x80\x94 hello", &g_WindowOpen))
     {
         ImGui::Text("Hello from gw2-nexus.");
@@ -36,13 +44,19 @@ void AddonLoad(AddonAPI_t* aApi)
     // A DLL has its own ImGui globals/heap — adopt Nexus's context + allocators
     // so our draw calls land on the same context the loader renders.
     ImGui::SetCurrentContext(static_cast<ImGuiContext*>(aApi->ImguiContext));
+    // Raw signatures (not the ImGuiMemAllocFunc typedefs, which don't exist in
+    // ImGui 1.80 — the version the current Nexus host runs).
     ImGui::SetAllocatorFunctions(
-        reinterpret_cast<ImGuiMemAllocFunc>(aApi->ImguiMalloc),
-        reinterpret_cast<ImGuiMemFreeFunc>(aApi->ImguiFree));
+        reinterpret_cast<void* (*)(size_t, void*)>(aApi->ImguiMalloc),
+        reinterpret_cast<void  (*)(void*, void*)>(aApi->ImguiFree));
 
     aApi->GUI_Register(RT_Render, AddonRender);
 
     if (aApi->Log) { aApi->Log(LOGL_INFO, "gw2-nexus", "hello addon loaded"); }
+
+    // Nexus draws this toast with its OWN ImGui, so it appears even if our
+    // window rendering is still off — a guaranteed "it's alive" signal.
+    if (aApi->GUI_SendAlert) { aApi->GUI_SendAlert("gw2-nexus: hello addon loaded"); }
 }
 
 // Nexus calls this on unload/reload; free everything we registered.
