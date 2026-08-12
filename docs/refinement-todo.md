@@ -15,6 +15,10 @@
 **Deferred:** No modules yet — boundaries become explicit when the first contract is defined.
 **Resolution trigger:** First spec that introduces a contract or interface.
 
+### Decision: How `shared/` is consumed across per-addon repos
+**Deferred:** Per ADR-0001 each addon is its own repo but they all depend on the `gw2-shared` helper layer. Whether `shared` is a submodule inside each addon repo, a vendored copy, or a published/packaged library is undecided.
+**Resolution trigger:** When the second addon starts (the first point two repos need `shared`). Record via an ADR.
+
 ## Conventions
 
 ### Decision: Code style and linting

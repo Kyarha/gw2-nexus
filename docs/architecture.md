@@ -12,22 +12,29 @@
 
 ## Repository structure
 
-<!-- elicited: 2026-08-12 / status: filled / hash: sha256:0c846c061184 -->
+<!-- elicited: 2026-08-12 / status: filled / hash: sha256:b4a6cd7a0cdb -->
 
-Planned layout (the addon folders arrive as their specs land; only the docs
-workspace exists today):
+**Umbrella project + one repo per addon** (ADR-0001). `gw2-nexus` is the umbrella
+that holds the planning and the master build and links each addon and the shared
+layer as git submodules; each addon lives in its own GitHub repo with its own
+versions and releases. Only the umbrella + docs exist today — addon repos are
+created as each addon's work begins.
 
 ```
-gw2-nexus/
+gw2-nexus/             # umbrella repo (this one) — planning + super-build
 ├── CLAUDE.md          # project primer for Claude Code
-├── CMakeLists.txt     # root build — adds shared/ and each addon as a target
-├── sdk/               # Nexus-API headers (git submodule, MIT)
-├── shared/            # common layer: theme, settings persistence, GW2 API client
-├── notes/             # Notes addon (MVP)
-├── markers/           # Markers addon (later)
-├── tracker/           # Legendary / Bank tracker addon (later)
-└── docs/              # vision, architecture, specs, decisions (jig workspace)
+├── CMakeLists.txt     # super-build — adds shared + each addon as a target
+├── docs/              # jig workspace: vision, architecture, specs, decisions
+├── sdk/      →submodule→  RaidcoreGG/Nexus-API   # MIT, upstream
+├── shared/   →submodule→  Kyarha/gw2-shared      # theme, settings, GW2 API client
+├── notes/    →submodule→  Kyarha/gw2-notes       # Notes addon (MVP)
+├── markers/  →submodule→  Kyarha/gw2-markers     # Markers addon (later)
+└── tracker/  →submodule→  Kyarha/gw2-tracker     # Legendary/Bank tracker (later)
 ```
+
+Each addon repo builds a single `.dll`, tags a version-only release
+(`vMAJOR.MINOR.PATCH`), and auto-updates through Nexus's GitHub provider pointed
+at that repo (ADR-0001).
 
 ## Tech stack
 
