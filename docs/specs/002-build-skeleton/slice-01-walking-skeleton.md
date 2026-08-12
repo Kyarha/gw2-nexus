@@ -1,8 +1,9 @@
 ---
-status: READY_FOR_IMPLEMENTATION
+status: RECONCILED
 dependencies: [adr-0001]
-last_verified:
+last_verified: 2026-08-12
 frame_review: true
+claimed_by: main
 ---
 
 ## Slice 002-01 — walking-skeleton
@@ -48,16 +49,16 @@ foundation.
    rendering addon cannot be asserted headlessly).
 
 **DoD (Definition of Done):**
-- [ ] AC1–AC6 pass; AC7 verified in-game and the result recorded in the
+- [x] AC1–AC6 pass; AC7 verified in-game and the result recorded in the
       deviation log (with a screenshot if practical).
-- [ ] Automated coverage where it applies: CI green (configure + build + artifact
+- [x] Automated coverage where it applies: CI green (configure + build + artifact
       upload). Note: this slice is mostly build/integration + one manual in-game
       check; there is little unit-testable logic. State that honestly rather than
       inventing tests.
-- [ ] Reviewed by the `reviewer` subagent (prompt built by `review.py`);
+- [x] Reviewed by the `reviewer` subagent (prompt built by `review.py`);
       compliance + craft passes recorded and clear.
-- [ ] Deviation log produced under this slice heading.
-- [ ] Reconciliation review passed.
+- [x] Deviation log produced under this slice heading.
+- [x] Reconciliation review passed.
 
 **Anti-horizontal-phasing check:** after this slice, a real window from our
 addon appears in-game, built automatically by CI — observable, end-to-end value,
@@ -105,6 +106,70 @@ verdict: pass) raised two non-blocking residuals, both resolved in implementatio
   Also required 1.80-compatible code: raw allocator function-pointer casts (no
   `ImGuiMemAllocFunc` typedef in 1.80) and display-size centering (no
   `GetMainViewport()` in 1.80). Rule: track the host's ImGui version.
+
+### Deviation log
+
+Original acceptance criteria preserved above; deviations recorded here.
+
+- **ImGui version (AC3/AC4 mechanics).** Built first against `imgui19270`
+  (1.92.7); AC7 crashed on first render in-game. Root-caused from Nexus source
+  to the shipping host `2026.2.17.1210` vendoring ImGui **v1.80**. Fixed:
+  `vendor/imgui` → `RaidcoreGG/imgui` (v1.80, the official template's pin) plus
+  1.80-compatible code (raw allocator function-pointer casts; `GetIO().DisplaySize`
+  centering instead of `GetMainViewport()`).
+- **Update provider (AC3).** AC3 named "GitHub update provider pointing at the
+  eventual addon repo." Implemented as `UP_None` (no auto-update): the skeleton
+  lives in the umbrella, which is not a release repo; per-addon `UP_GitHub` is
+  wired when an addon is extracted to its own repo (ADR-0001). Intentional.
+- **Static CRT (/MT).** Added `CMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded` so the
+  DLL is self-contained under CrossOver (frame-critique residual).
+- **Visibility additions (beyond ACs).** `GUI_SendAlert` toast on load
+  (ABI-safe confirmation) and window centered via display size — added at the
+  user's request to make the skeleton unmissable. No scope creep beyond "render
+  a window."
+
+### AC7 — in-game verification (passed)
+
+`hello.dll` loaded under Nexus `2026.2.17.1210` in Guild Wars 2 via CrossOver
+(Apple Silicon, M2 mini). The "gw2-nexus: hello addon loaded" toast and the
+centered "gw2-nexus — hello" window rendered; disable → re-enable in the Nexus
+addon list vanished and restored the window with no crash. Nexus log confirmed
+the load (API Version 6, signature 1733767217, 56µs).
+
+### Review nits (non-blocking, logged for later)
+
+From the craft pass — none block this slice; captured for when the addons grow:
+
+- `.github/workflows/build.yml` — `on: [push, pull_request]` double-runs CI when
+  a branch has an open PR. Harmless for the current direct-to-main solo flow;
+  add a branch filter if it becomes noisy.
+- `hello/src/entry.cpp` — `g_WindowOpen` is not reset on `Unload`, and there is
+  no reopen path yet; once a toggle / options entry lands, wire reopen.
+- `hello/src/entry.cpp` — `Signature = 0x67573031` is provisional; finalize a
+  unique value per addon when the addon gets its own repo.
+- `hello/src/entry.cpp` — null-guarding is inconsistent: optional fields (`Log`,
+  `GUI_SendAlert`) are guarded, core fields (`ImguiContext`, `GUI_Register`) are
+  not. Defensible (core fields are always present), but add a one-line comment.
+- `hello/src/entry.cpp` — the window title's em-dash (U+2014) renders only
+  because the host font covers it (AC7 confirmed); plain ASCII `-` would be
+  font-independent.
+
+### Reconciliation sweep
+
+Drift-prone surfaces checked:
+
+- `docs/architecture.md` — **no-op**: repo structure + tech stack already carry
+  the umbrella topology (ADR-0001) and x64; ImGui-version/CRT specifics are
+  recorded in this slice, not the front-door doc.
+- `docs/product-vision.md` — **no-op**: no vision change.
+- `docs/decisions/adr-0001` — **no-op**: the skeleton's `UP_None` is consistent
+  with "per-addon GitHub updates wired at extraction."
+- `docs/refinement-todo.md` — **no-op**: the `shared/`-consumption trigger
+  already reflects first-addon extraction.
+- `docs/memory/learnings.md` — **updated** (via memory-sync): match the addon's
+  ImGui to the running Nexus host's ImGui version.
+- `CLAUDE.md` primer — **updated** on close-out: spec 002 moved out of active
+  work.
 - **CRT linkage.** A default MSVC build links the CRT dynamically (`/MD`), so the
   DLL would need the MSVC redistributable present in the CrossOver bottle to
   load. Switched to static CRT (`/MT`, `CMAKE_MSVC_RUNTIME_LIBRARY`) so the DLL
