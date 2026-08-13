@@ -1,5 +1,5 @@
 ---
-status: IN_PROGRESS
+status: REVIEWED
 dependencies: [002-01, adr-0001, adr-0002]
 last_verified:
 arch_review: true

@@ -44,7 +44,7 @@ void NoteStore::load()
     if (doc.is_discarded() || !doc.is_object())
     {
         // Corrupt / unparseable -> recover to empty without throwing (AC3).
-        notes_.clear();
+        // (notes_ was already cleared at the top of load().)
         return;
     }
 

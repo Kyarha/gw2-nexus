@@ -192,9 +192,12 @@ TEST_CASE("a versioned file with extra/unknown fields loads forward-compatibly (
     CHECK(new_id != "7");
 }
 
-// --- shared/ atomic-write helper: crash-safety property ----------------------
+// --- shared/ atomic-write helper --------------------------------------------
+// Note: the rename-atomicity / interrupted-write property is not unit-testable
+// here (would need a real crash between temp-write and rename). This case checks
+// the observable contract: overwrite-in-place works and no temp file is leaked.
 
-TEST_CASE("atomic_write leaves the previous file intact when replacing it")
+TEST_CASE("atomic_write overwrites in place and leaves no temp file behind")
 {
     TempStorePath tmp;
     REQUIRE(shared::persistence::atomic_write(tmp.path, "v1"));

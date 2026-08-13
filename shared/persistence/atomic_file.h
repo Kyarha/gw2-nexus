@@ -13,11 +13,22 @@ namespace shared::persistence {
 
 // Atomically replace the file at `target` with `content`.
 //
-// Writes to a uniquely-named temp file in the SAME directory as `target`, then
-// std::filesystem::rename()s it over the target. rename within a directory is
-// atomic on the platforms we target, so a crash mid-write leaves either the old
-// file or the new one intact — never a half-written, corrupt file. The parent
+// Writes to a temp file named `<target>.tmp` in the SAME directory as `target`,
+// then std::filesystem::rename()s it over the target. rename within a directory
+// is atomic on the platforms we target, so an interrupted write leaves either the
+// old file or the new one intact — never a half-written, corrupt file. The parent
 // directory is created if missing.
+//
+// Scope of the guarantee:
+//   - Corruption-safe against process crash / abrupt exit: readers always see a
+//     complete old-or-new file. This is what AC3 (spec 003-01) requires.
+//   - NOT power-loss durable: bytes may sit in the OS cache (no fsync of the temp
+//     file or parent directory). Fine for a notes addon; revisit if a consumer
+//     ever needs fsync-level durability.
+//   - Assumes ONE writer per `target`. The temp name is fixed per target (not
+//     per call), so two concurrent writers to the SAME file would collide on the
+//     temp. Distinct files never collide; today each addon owns its own file and
+//     writes only from the render thread.
 //
 // Returns true on success, false if the write could not be completed (the
 // existing target, if any, is left untouched on failure).

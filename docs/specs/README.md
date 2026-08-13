@@ -17,7 +17,7 @@
 |------|-------|--------|-------|
 | [001-adopt-jig](001-adopt-jig/spec.md) | 001-01 — bootstrap | **DONE** | worked example; review boxes satisfied by deterministic completion check |
 | [002-build-skeleton](002-build-skeleton/spec.md) | 002-01 — walking-skeleton | **DONE** |  |
-| [003-notes-mvp](003-notes-mvp/spec.md) | 003-01 — note-persist | IN_PROGRESS (claude/notes-mvp-spec-003-b…) |  |
+| [003-notes-mvp](003-notes-mvp/spec.md) | 003-01 — note-persist | REVIEWED (claude/notes-mvp-spec-003-b…) |  |
 | [003-notes-mvp](003-notes-mvp/spec.md) | 003-02 — coordinates | DRAFT |  |
 | [003-notes-mvp](003-notes-mvp/spec.md) | 🔬 003-03 — spike: map/chat action feasibility | DRAFT |  |
 | [003-notes-mvp](003-notes-mvp/spec.md) | 003-04 — coordinate actions | DRAFT |  |
@@ -30,4 +30,5 @@ Advisory (ADR-0040 auditability — never blocks). Regenerated from `reviews/sli
 
 - **1** pass(es) recorded `not-shown` (selection step did not run — the kill-criterion-1 defect signal).
 - **0** pass(es) recorded `non-interactive` (declared no-orchestrator / CI).
-- **0** shown-and-declined anomaly(ies) (a high-confidence richer skill was shown and not applied):
+- **1** shown-and-declined anomaly(ies) (a high-confidence richer skill was shown and not applied):
+  - `003-notes-mvp/slice-01-arch.md` — applied `arch-review`; declined: design-jury, design-review
