@@ -25,9 +25,10 @@
 **Deferred:** No signal from the initial pitch.
 **Resolution trigger:** First spec that produces non-trivial code, or first time inconsistency causes friction.
 
-### Decision: Testing framework
-**Deferred:** No signal from the initial pitch.
+### ~~Decision: Testing framework~~ — RESOLVED 2026-08-13
+~~**Deferred:** No signal from the initial pitch.~~
 **Resolution trigger:** First spec that requires tests beyond ad-hoc verification.
+**Resolved by:** spec 003-01 — **doctest** (single-header, vendored, run via CTest). Recorded in [lightweight-decisions.md](decisions/lightweight-decisions.md) ("C++ unit-test framework: doctest").
 
 ## Operations
 

@@ -48,7 +48,10 @@ at that repo (ADR-0001).
   loader; Dear ImGui for UI (Nexus shares one ImGui context, set current in
   `Load`).
 - **Package manager / build:** CMake; dependencies as git submodules
-  (`RaidcoreGG/Nexus-API` (MIT), Dear ImGui) plus vendored / bundled data.
+  (`RaidcoreGG/Nexus-API` (MIT), Dear ImGui) plus vendored single-header libs
+  (`nlohmann-json`, `doctest`) and bundled data. Unit tests run via CTest
+  (doctest); the pure-logic layers build/test on macOS/clang, addon DLLs on
+  Windows CI.
 - **Database / state:** none — per-addon JSON in the addon directory
   (nlohmann-json convention), bundled static datasets, and on-disk caches of
   static GW2 API data.
@@ -88,9 +91,12 @@ will be promoted to its own ADR with the build-skeleton spec. See
 <!-- elicited: 2026-08-12 / status: filled / hash: sha256:4547541f0007 -->
 
 - **`shared/`** — the common layer every addon inherits: a **theme** module
-  (GW2-native ImGui styling), **settings persistence** (JSON read/write via the
-  addon directory), and a **GW2 API client** (auth, on-disk caching,
-  rate-limit / backoff handling).
+  (GW2-native ImGui styling), **settings/JSON persistence** (a byte-level
+  crash-safe atomic-write primitive at `shared/persistence/` — temp-file +
+  rename, added by spec 003-01 — plus JSON read/write via the addon directory),
+  and a **GW2 API client** (auth, on-disk caching, rate-limit / backoff
+  handling). Present today (spec 003-01): `shared/persistence`; theme (spec
+  003-06) and API client arrive with the slices that first need them.
 - **Per-addon modules** (`notes`, `markers`, `tracker`) — each a self-contained
   DLL that depends on `shared/` and the Nexus-API. No addon depends on another
   addon.

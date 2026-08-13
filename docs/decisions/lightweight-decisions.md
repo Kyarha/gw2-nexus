@@ -49,6 +49,32 @@ fields), so the documented shape and the helper output agree.
 
 ## Entries
 
-_No entries yet. The first lightweight decision will be recorded here — usually
-prompted at session end by `/jig:memory-sync`, or during a spec slice's
-reconciliation._
+### 2026-08-13 — C++ unit-test framework: doctest
+
+**Decision:** Use doctest (single-header, vendored at vendor/doctest/doctest.h v2.4.11) as the project's C++ unit-test framework, run via CTest. Resolves the refinement-todo 'Testing framework' item (spec 003-01 was the first slice needing tests beyond ad-hoc verification).
+
+**Context:** 003-01 needed off-game unit tests for the pure-logic persistence layer; doctest is single-header with trivial CMake integration and no external dependency management, and its pure-logic tests compile/run on macOS/clang as well as Windows CI.
+
+**Scope:** build/test harness (CMake enable_testing + notes-core-tests); all future C++ tests
+
+**Commit:** 24f144b
+
+### 2026-08-13 — Vendor single-header deps (nlohmann-json, doctest) as files, not submodules
+
+**Decision:** nlohmann-json (v3.11.3) and doctest (v2.4.11) are vendored as single headers under vendor/ rather than added as git submodules. imgui and sdk (Nexus-API) remain submodules.
+
+**Context:** Both libraries ship as one header; a full-tree submodule for a single file each is disproportionate. Slice 003-01 explicitly permitted this fallback to the architecture.md 'deps as submodules' convention.
+
+**Scope:** vendor/nlohmann/json.hpp, vendor/doctest/doctest.h; CMake INTERFACE libs
+
+**Commit:** 24f144b
+
+### 2026-08-13 — Notes persistence is write-through, not Unload-flush
+
+**Decision:** NoteStore writes the JSON file on every committed mutation (atomic temp+rename); the Nexus Unload flush is best-effort belt-and-braces only. Durability does not depend on Unload firing.
+
+**Context:** Frame-critique (slice 003-01) found it is not grounded that Nexus Unload fires on normal game exit (002-01 verified only manual disable/re-enable). Write-through makes durability independent of shutdown; verified in-game surviving a full quit-relaunch.
+
+**Scope:** notes/core/note_store.cpp; shared/persistence/atomic_file.*
+
+**Commit:** 24f144b
