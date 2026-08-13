@@ -8,7 +8,7 @@
 ## Index
 
 - [ADR-0001: Umbrella project with per-addon repos and per-addon versioning](adr-0001-repo-topology-versioning.md) — `gw2-nexus` is a family of several Guild Wars 2 Nexus addons (Notes, Markers, a Legendary/Bank tracker) that share a build and a `shared/` helper layer. (2026-08-12, Accepted)
-- [ADR-0004: GW2 art-asset sourcing policy for all Nexus addons](adr-0004-gw2-art-asset-sourcing.md) — The Nexus addons in this repo aim to integrate smoothly with Guild Wars 2, and this ADR settles how each addon is styled to reach that native feel while staying within ArenaNet's content terms. (2026-08-13, Proposed)
+- [ADR-0004: GW2 art-asset sourcing policy for all Nexus addons](adr-0004-gw2-art-asset-sourcing.md) — The Nexus addons in this repo aim to integrate smoothly with Guild Wars 2, and this ADR settles how each addon is styled to reach that native feel while staying within ArenaNet's content terms. (2026-08-13, Accepted)
 
 ## Format
 
