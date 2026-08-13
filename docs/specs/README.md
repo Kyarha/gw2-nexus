@@ -17,7 +17,7 @@
 |------|-------|--------|-------|
 | [001-adopt-jig](001-adopt-jig/spec.md) | 001-01 — bootstrap | **DONE** | worked example; review boxes satisfied by deterministic completion check |
 | [002-build-skeleton](002-build-skeleton/spec.md) | 002-01 — walking-skeleton | **DONE** |  |
-| [003-notes-mvp](003-notes-mvp/spec.md) | 003-01 — note-persist | REVIEWED (claude/notes-mvp-spec-003-b…) |  |
+| [003-notes-mvp](003-notes-mvp/spec.md) | 003-01 — note-persist | **DONE** |  |
 | [003-notes-mvp](003-notes-mvp/spec.md) | 003-02 — coordinates | DRAFT |  |
 | [003-notes-mvp](003-notes-mvp/spec.md) | 🔬 003-03 — spike: map/chat action feasibility | DRAFT |  |
 | [003-notes-mvp](003-notes-mvp/spec.md) | 003-04 — coordinate actions | DRAFT |  |

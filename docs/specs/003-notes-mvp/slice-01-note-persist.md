@@ -1,10 +1,9 @@
 ---
-status: RECONCILED
+status: DONE
 dependencies: [002-01, adr-0001, adr-0002]
 last_verified: 2026-08-13
 arch_review: true
 frame_review: true
-claimed_by: claude/notes-mvp-spec-003-bec176
 ---
 
 <!-- jig grounding (spec 064-02 / ADR-0020): ground factual claims about runnable
@@ -75,22 +74,22 @@ and UC-13 (reachable anywhere, any character).
    leak (extends 002-01 AC5). Durability does not depend on this flush (AC3).
 
 **DoD (Definition of Done):**
-- [ ] AC1–AC6 pass; the in-game load/render/unload path verified by hand (a
+- [x] AC1–AC6 pass; the in-game load/render/unload path verified by hand (a
       rendering + input addon cannot be asserted headlessly — same honesty as
       002-01 AC7), result recorded in the deviation log with a screenshot.
-- [ ] Automated coverage where it applies: the **persistence layer** (serialize
+- [x] Automated coverage where it applies: the **persistence layer** (serialize
       → write → read → deserialize round-trip, schema-version handling, missing/
       corrupt-file recovery, **write-through durability** per AC3) is unit-tested
       off-game with **doctest** (the DoR-pinned framework — this slice stands up
       the first test harness in the super-build); each test shown to fail when its
       feature is removed. UI/render/input is the manual portion — state that split
       honestly rather than inventing UI tests.
-- [ ] Reviewed by the `reviewer` subagent (compliance + craft passes recorded and
+- [x] Reviewed by the `reviewer` subagent (compliance + craft passes recorded and
       clear). Arch pass runs (`arch_review: true` — this slice establishes the
       notes module and its `shared/` boundary).
-- [ ] Deviation log + reconciliation sweep produced under this slice heading.
+- [x] Deviation log + reconciliation sweep produced under this slice heading.
 - [x] Reconciliation review passed.
-- [ ] `docs/refinement-todo.md` re-checked (native-look trigger resolved by
+- [x] `docs/refinement-todo.md` re-checked (native-look trigger resolved by
       ADR-0004, which supersedes ADR-0003; topology timing by ADR-0002; the
       cross-repo `shared/`-consumption item stays deferred to first extraction —
       confirm no new deferral needed).
