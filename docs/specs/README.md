@@ -22,7 +22,7 @@
 | [003-notes-mvp](003-notes-mvp/spec.md) | 🔬 003-03 — spike: map/chat action feasibility | DRAFT |  |
 | [003-notes-mvp](003-notes-mvp/spec.md) | 003-04 — coordinate actions | DRAFT |  |
 | [003-notes-mvp](003-notes-mvp/spec.md) | 003-05 — context-aware notes (optional MVP convenience) | DRAFT |  |
-| [003-notes-mvp](003-notes-mvp/spec.md) | 003-06 — native-look theme (ornate 9-slice frames) | DRAFT |  |
+| [003-notes-mvp](003-notes-mvp/spec.md) | 003-06 — native-look theme layer | DRAFT |  |
 
 ## Richer-skill selection audit (spec 096-05)
 

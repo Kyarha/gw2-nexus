@@ -10,6 +10,7 @@ frame_review: true
 ## Status
 
 Accepted (2026-08-13)
+Supersedes ADR-0003
 
 ## Context
 

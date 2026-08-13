@@ -41,10 +41,11 @@
 **Deferred:** Notes is first (MVP); the order of Markers vs. the Legendary / Bank tracker is undecided.
 **Resolution trigger:** When the Notes epic's MVP is usable and the next epic is picked.
 
-### ~~Decision: How far to push the native look~~ — RESOLVED 2026-08-12
+### ~~Decision: How far to push the native look~~ — RESOLVED 2026-08-12, reconciled 2026-08-13
 ~~**Deferred:** Tasteful themed panels (low effort) vs. pixel-perfect ornate 9-sliced frames (an art-asset project).~~
 **Resolution trigger:** First Notes UI spec that styles a panel. Record via an ADR.
-**Resolved by:** [ADR-0003: Native look tier — ornate 9-slice frames, delivered as a dedicated theme slice](decisions/adr-0003-native-look-tier.md).
+**Reconciled outcome:** our own **basic themed design is the default** (a shared theme layer, spec slice 003-06); the game's own UI textures are used only if available at runtime (never bundled) — there is no ornate-art project. Superseded first-pass answer ([ADR-0003](decisions/adr-0003-native-look-tier.md), ornate 9-slice frames) with the art-sourcing policy below.
+**Resolved by:** [ADR-0004: GW2 art-asset sourcing policy for all Nexus addons](decisions/adr-0004-gw2-art-asset-sourcing.md) (supersedes ADR-0003).
 
 ### ~~Decision: May we reuse GW2's own UI textures / icons as bundled art?~~ — RESOLVED 2026-08-13
 ~~**Deferred:** Whether the shipped addon may reuse Guild Wars 2's own UI textures / frame art (bundled in the `.dll`, or referenced from assets the game has already loaded at runtime via the Nexus host) is **unverified** — it depends on ArenaNet's third-party addon and content policy. This was previously written into the vision doc as a settled "frame art must be original" exclusion; that was vision-elicitation drift, not a decision, and has been removed. It gates how photo-real the native look can get and pairs with "How far to push the native look" above. (Item icons are already planned to come live from the official API — referencing, not bundling — which is a separate, lower-risk case.)~~

@@ -27,11 +27,12 @@ and UC-13 (reachable anywhere, any character).
   `hello/`); extraction to `Kyarha/gw2-notes` + `Kyarha/gw2-shared` and the
   GitHub update provider happen at first release, not now. The cross-repo
   `shared/`-consumption question stays deferred to its trigger.
-- ✅ **Native-look tier decided** —
-  [ADR-0003](../../decisions/adr-0003-native-look-tier.md): ornate 9-slice frames,
-  delivered by a **dedicated theme slice ([003-06](slice-06-native-look-theme.md))**
-  in `shared/theme`, **not** by this slice. 003-01 ships the *functional* note
-  with a minimal container; ornate fidelity is gated on 003-06, not here.
+- ✅ **Native-look approach decided** —
+  [ADR-0004](../../decisions/adr-0004-gw2-art-asset-sourcing.md): our own basic
+  themed design, delivered by a **dedicated theme slice
+  ([003-06](slice-06-native-look-theme.md))** in `shared/theme`, **not** by this
+  slice. 003-01 ships the *functional* note with a minimal container; the themed
+  look is gated on 003-06, not here. (ADR-0004 supersedes ADR-0003.)
 - ✅ JSON library pinned (nlohmann-json per
   [architecture.md § Tech stack](../../architecture.md)).
 - ✅ **C++ unit-test framework pinned: doctest** (single-header, trivial to add to
@@ -62,12 +63,12 @@ and UC-13 (reachable anywhere, any character).
 4. **The record is versioned.** The JSON carries a top-level schema version field
    so later slices (coordinate, tags) can migrate it forward without data loss.
 5. **The panel is a clean functional container, structured to be re-skinned.**
-   Slice 003-01 ships a minimal, unobtrusive panel — NOT the final ornate look
+   Slice 003-01 ships a minimal, unobtrusive panel — NOT the final themed look
    (that is [003-06](slice-06-native-look-theme.md), per
-   [ADR-0003](../../decisions/adr-0003-native-look-tier.md)). The panel's chrome
-   (window flags, padding, title, background) is factored so the 003-06 9-slice
-   frame can wrap it without reworking the note logic. No ornate-fidelity claim is
-   made or gated here; "reads as native" is 003-06's acceptance criterion.
+   [ADR-0004](../../decisions/adr-0004-gw2-art-asset-sourcing.md)). The panel's
+   chrome (window flags, padding, title, background) is factored so the 003-06
+   theme layer can wrap it without reworking the note logic. No theme-fidelity
+   claim is made or gated here; "reads as native" is 003-06's acceptance criterion.
 6. **It unloads cleanly.** `Unload` deregisters the render callback, keybind, and
    toolbar entry, does a **best-effort** final flush, and frees everything
    registered, so Nexus can unload/reload while the game runs without a crash or
@@ -89,9 +90,10 @@ and UC-13 (reachable anywhere, any character).
       notes module and its `shared/` boundary).
 - [ ] Deviation log + reconciliation sweep produced under this slice heading.
 - [ ] Reconciliation review passed.
-- [ ] `docs/refinement-todo.md` re-checked (native-look trigger already resolved
-      by ADR-0003; topology timing by ADR-0002; the cross-repo `shared/`-consumption
-      item stays deferred to first extraction — confirm no new deferral needed).
+- [ ] `docs/refinement-todo.md` re-checked (native-look trigger resolved by
+      ADR-0004, which supersedes ADR-0003; topology timing by ADR-0002; the
+      cross-repo `shared/`-consumption item stays deferred to first extraction —
+      confirm no new deferral needed).
 
 ## Assumptions
 

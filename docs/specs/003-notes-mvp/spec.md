@@ -40,10 +40,13 @@ foundation, now with persistence, player-state reads, and a real feature.
 - **Clickable game-entity references** (UC-8) — the first use of the live GW2 API;
   the vision scopes this as the separate "fast follow" epic after the Notes MVP.
 
-The native-look question is **in scope** but split off: ADR-0003 resolved it to
-ornate 9-slice frames, delivered by the dedicated theme slice
-[003-06](slice-06-native-look-theme.md) so the functional note (003-01) is not
-blocked on art.
+The native-look question is **in scope** but split off:
+[ADR-0004](../../decisions/adr-0004-gw2-art-asset-sourcing.md) sets the approach —
+**our own basic themed design by default** (a shared theme layer, slice
+[003-06](slice-06-native-look-theme.md)); the game's own textures are used only if
+available at runtime, never bundled. This keeps the functional note (003-01)
+unblocked. (ADR-0003, which had framed this as an ornate-art project, is
+superseded by ADR-0004.)
 
 ## Assumptions
 
@@ -90,8 +93,8 @@ spikes it. The spike's outcome **branches** what 003-04 builds — it is not
 - **003-01 (Path + minimal Data + Interface)** — the thinnest whole note: a
   functional panel, openable via toolbar/hotkey on any character, into which you
   type plain-text notes that persist to JSON and reload next session. Delivers
-  UC-1 + UC-13 on its own. Ships with a minimal re-skinnable container; the ornate
-  look is 003-06 ([ADR-0003](../../decisions/adr-0003-native-look-tier.md)).
+  UC-1 + UC-13 on its own. Ships with a minimal re-skinnable container; the native
+  themed look is 003-06 ([ADR-0004](../../decisions/adr-0004-gw2-art-asset-sourcing.md)).
 - **003-02 (Data axis)** — enrich the note record with an *optional coordinate*
   captured from the player's current position (A1) and shown on the note. No
   actions yet: knowing "this note is about *here*" is value, and it de-risks the
@@ -113,12 +116,15 @@ spikes it. The spike's outcome **branches** what 003-04 builds — it is not
   be parked as `DEFERRED` if priorities shift, and can itself split along the
   Rules axis (per-character vs. map-auto-surface) if it proves too large when
   picked up.
-- **003-06 (cross-cutting — native-look theme)** — the ornate GW2-native look
-  ([ADR-0003](../../decisions/adr-0003-native-look-tier.md)): a 9-slice frame
-  renderer in `shared/theme` (inherited by every future addon, principle #6) that
-  re-skins the Notes panel. Split out of 003-01 because it is cross-cutting and
-  blocked on original border art — the functional note ships first, the ornate
-  look lands when art exists. Not on the coordinate spine; depends only on 003-01.
+- **003-06 (cross-cutting — native-look theme)** — the GW2-native look
+  ([ADR-0004](../../decisions/adr-0004-gw2-art-asset-sourcing.md)): a shared theme
+  layer in `shared/theme` (inherited by every future addon, principle #6) applying
+  our **own basic themed design** (the mockup in `docs/designs/notes-v1.0/`) that
+  re-skins the Notes panel, with a 9-slice frame renderer as the border mechanism.
+  The game's own textures are an optional runtime enhancement (only if the Nexus
+  API exposes them, never bundled); the default design is always shippable, so the
+  slice is **not** art-blocked. Split out of 003-01 because it is cross-cutting.
+  Not on the coordinate spine; depends only on 003-01.
 
 **Anti-horizontal-phasing check:** 003-01/02/04/05 each end with something the
 player sees and does in-game (a persisted note, a note stamped with a place, a
@@ -134,9 +140,12 @@ disguised "build it all later" phase.
   `Kyarha/gw2-shared` (and the GitHub update provider) happens at first release.
   The cross-repo `shared/`-consumption question
   ([refinement-todo](../../refinement-todo.md)) stays deferred to that extraction.
-- **Native-look tier** — RESOLVED by
-  [ADR-0003](../../decisions/adr-0003-native-look-tier.md): ornate 9-slice frames,
-  delivered as the dedicated theme slice 003-06, not folded into 003-01.
+- **Native-look approach** — set by
+  [ADR-0004](../../decisions/adr-0004-gw2-art-asset-sourcing.md): our own basic
+  themed design by default (shared theme layer, slice 003-06), icons live from the
+  API, game's own textures only if available at runtime, never bundled. Delivered
+  as the dedicated theme slice 003-06, not folded into 003-01.
+  (Supersedes ADR-0003's ornate-art framing.)
 - **New dependency: JSON library** — persistence (003-01) introduces nlohmann-json
   (architecture.md's stated convention); recorded at reconciliation.
 
@@ -152,6 +161,7 @@ disguised "build it all later" phase.
    share-to-chat (feasible subset + clipboard fallback). *(UC-6, UC-7)*
 5. [003-05 — context-aware notes](slice-05-context-aware.md) — per-character and
    map-tagged auto-surface (optional; may be `DEFERRED`). *(UC-9, UC-10)*
-6. [003-06 — native-look theme](slice-06-native-look-theme.md) — ornate 9-slice
-   frame in `shared/theme`, re-skins the Notes panel; blocked on original art.
+6. [003-06 — native-look theme](slice-06-native-look-theme.md) — shared theme
+   layer (our own basic themed design; 9-slice frame mechanism) re-skinning the
+   Notes panel. *(design principle #1 / #6; off the coordinate spine)*
    *(design principle #1 / #6; off the coordinate spine)*

@@ -1,5 +1,5 @@
 ---
-status: Accepted
+status: Superseded
 dependencies: [adr-0002]
 last_verified: 2026-08-12
 frame_review: true
@@ -10,6 +10,7 @@ frame_review: true
 ## Status
 
 Accepted (2026-08-12)
+Superseded by [ADR-0004](./adr-0004-gw2-art-asset-sourcing.md) (2026-08-13)
 
 ## Context
 
