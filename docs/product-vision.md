@@ -114,8 +114,6 @@ combines place- and character-aware notes, world markers, and account-aware
 - Anything that violates the GW2 API terms or needs unsupported memory reading
   (e.g. detecting which in-game panel is open — see architecture.md).
 - A full build-theorycrafting / gear-optimization planner.
-- Redistributing GW2's own textures / icons as bundled art (item icons are
-  pulled live from the official API; any frame art must be original).
 
 ## Use cases
 
@@ -183,8 +181,10 @@ combines place- and character-aware notes, world markers, and account-aware
 **Non-obvious constraints:** addons are 64-bit (x64) C++ DLLs; Nexus / MumbleLink
 cannot expose which in-game panel is open (only map-open, textbox-focus,
 in-combat, and game-focus are visible); the GW2 API is eventually-consistent
-(~minutes) and rate-limited (burst 300, refill 5/s); GW2's own textures and
-icons are not ours to redistribute.
+(~minutes) and rate-limited (burst 300, refill 5/s). Whether GW2's own UI
+textures / icons may be reused or bundled is **unresolved** — it depends on
+ArenaNet's third-party addon and content policy and has not yet been checked
+(see [refinement-todo.md](refinement-todo.md)).
 
 ## How new work enters
 
