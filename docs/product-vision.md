@@ -99,8 +99,13 @@ combines place- and character-aware notes, world markers, and account-aware
   API client) + a minimal "hello window" addon.
 - **MVP:** the Notes addon (text + clickable coordinates).
 - **Fast follow:** clickable game references (first API use).
-- **Later epics:** Markers, then the Legendary / Bank tracker (order between
-  these two is still open).
+- **Later epics (post-MVP; order *and* membership open):** Markers, the
+  Legendary / Bank tracker, **Recipe-notes** (make the Notes addon efficient for
+  crafting — reclaims the "cook's recipe list" scope, UC-2/3/4/5, today claimed by
+  no spec), and a candidate **Guild / friends shared-collaboration layer** (shared
+  notes and goals with a pledge model — a *separate addon + a small sync backend*,
+  not a Notes feature). The epic-order decision lives in
+  [refinement-todo.md](refinement-todo.md).
 
 ### MVP scope
 
@@ -191,7 +196,9 @@ ArenaNet's third-party addon and content policy and has not yet been checked
 <!-- elicited: 2026-08-12 / status: filled / hash: sha256:98c8e268b2fe -->
 
 - **Prioritization model:** mixed — personal-pain / signal-driven, on top of a
-  light three-epic roadmap (Notes → Markers → Legendary / Bank tracker).
+  light roadmap: Notes (MVP) first, then a post-MVP set whose order and membership
+  are open (Markers, Legendary / Bank tracker, Recipe-notes, and a candidate
+  Guild / friends collaboration layer — see refinement-todo.md).
 - **Spec-triggering rules:** a lookup or an alt-tab the player repeats becomes a
   candidate feature; a new epic starts once the previous epic's MVP is usable.
 
@@ -199,7 +206,14 @@ ArenaNet's third-party addon and content policy and has not yet been checked
 
 <!-- elicited: 2026-08-12 / status: filled / hash: sha256:c8b2be8f931d -->
 
-- Order of the later two epics (Markers vs. Legendary / Bank tracker).
+- Order **and membership** of the post-MVP epics — now four candidates (Markers,
+  Legendary / Bank tracker, Recipe-notes, Guild / friends collaboration), not two.
+- Whether the **Guild / friends shared-collaboration layer** is pursued at all,
+  and if so as a **separate addon + a sync backend** (the leaning) rather than a
+  Notes feature. It would introduce a hosted server, multiplayer shared state, and
+  a non-commercial-hosting question — cutting against the current "no cloud /
+  private by default" posture. Needs an ADR before it starts (see
+  refinement-todo.md).
 - How far to push the native look: tasteful themed panels vs. pixel-perfect
   ornate frames (an art-asset project).
 - Source and refresh strategy for the bundled legendary recipe tree.
