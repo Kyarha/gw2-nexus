@@ -42,10 +42,10 @@ No actions yet (those are 003-04); this slice grows the note record along the
    `docs/architecture.md § Data model`, so 003-04's actions consume a known shape.
 
 **DoD:**
-- [ ] AC1–AC5 pass; the capture verified in-game by standing at a known landmark
+- [x] AC1–AC5 pass; the capture verified in-game by standing at a known landmark
       and confirming the stamped value matches expectation (recorded with a
       screenshot in the deviation log).
-- [ ] Automated coverage: the **record migration** (003-01 file → +coordinate)
+- [x] Automated coverage: the **record migration** (003-01 file → +coordinate)
       and serialize/deserialize round-trip of a coordinate-bearing note are
       unit-tested off-game; each test shown to fail when its feature is removed.
       The MumbleLink read itself is the manual/in-game portion — stated honestly.
@@ -96,9 +96,21 @@ _Implementation notes (in progress; reconciliation pending in-game verification)
 - **Off-game coverage (DoD).** Migration, coordinate round-trip, stamp/overwrite/
   clear, text-only-unchanged, and display formatting are unit-tested in
   `notes/tests/test_note_store.cpp` (doctest, 15 cases / 77 assertions green);
-  a mutation (removing the stamp) was shown to turn the new tests red. The
-  MumbleLink read + in-game landmark verification + screenshot remain the manual
-  Windows portion (DoD item 1) — **still open**.
+  a mutation (removing the stamp) was shown to turn the new tests red.
+- **In-game verification (DoD item 1) — PASSED, and it validates A1.** Stood in
+  the Lion's Arch Aerodrome and stamped a note; it captured **`Map 1155 —
+  (49415, 32118)`**. Map id **1155** resolves to the *Lion's Arch Aerodrome* —
+  the exact map the character was on — so the MumbleContext field offsets
+  (transcribed from the public spec, previously runtime-unverified) are
+  **confirmed correct**; a mis-aligned struct would not have produced a map id
+  matching the location. Continent coords are non-zero and in Tyria's range.
+  This resolves assumption A1 for this slice. (Screenshot captured by the owner;
+  two screenshots — world map + in-Aerodrome — provided in the session.)
+- **First real Windows compile caught one bug (fixed).** `ReadCurrentCoordinate`
+  referenced `g_API` before its global declaration — invisible to the macOS
+  notes-core build (which excludes the Windows-only glue) but a hard MSVC error
+  (`C2065`) on CI. Fixed by declaring the helper after the `g_API` global (pure
+  reorder). CI green afterward; DLL built, installed, and verified in-game.
 
 ### Reconciliation sweep
 
