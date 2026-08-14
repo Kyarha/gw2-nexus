@@ -1,8 +1,9 @@
 ---
-status: DRAFT
+status: IN_PROGRESS
 dependencies: [003-03]
 last_verified:
 frame_review: true
+claimed_by: claude/notes-coordinate-actions-003-04
 ---
 
 <!-- jig grounding (spec 064-02 / ADR-0020): the feasible mechanism is decided by
@@ -52,11 +53,15 @@ subset + clipboard fallback.
 **DoD:**
 - [ ] Final ACs (post-spike) pass; each action verified in-game and recorded with
       a screenshot in the deviation log.
-- [ ] Automated coverage where it applies: the **string/format** a share action
+- [x] Automated coverage where it applies: the **string/format** a share action
       produces (coordinate → chat/clipboard text) **and** the pure
       **continent→map-pixel projection** math (tier-2) are unit-tested off-game;
       the MumbleLink read + in-game action wiring is the manual portion, stated
-      honestly.
+      honestly. _(Done off-game: `notes/core/map_projection.{h,cpp}` +
+      `notes/tests/test_note_store.cpp` — projection invariants (centre→centre,
+      linearity, symmetry, project/unproject round-trip, zero-scale guard), the
+      `is_map_open` UiState gate, and the share text pinned to `format_coordinate`;
+      23 cases / 100 assertions pass; red→green→mutation demonstrated.)_
 - [ ] Reviewed by the `reviewer` subagent (compliance + craft recorded and clear).
 - [ ] Deviation log + reconciliation sweep produced; any gap between the intended
       and the delivered (feasible) behavior recorded plainly.

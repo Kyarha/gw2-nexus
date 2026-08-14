@@ -22,6 +22,7 @@
 #include "imgui.h"
 #include "Nexus.h"
 
+#include "core/map_projection.h"
 #include "core/note.h"
 #include "core/note_store.h"
 #include "mumble_link.h"
@@ -44,6 +45,12 @@ AddonDefinition_t g_AddonDef{};
 AddonAPI_t*       g_API   = nullptr;
 notes::NoteStore* g_Store = nullptr;
 bool              g_PanelOpen = false;
+
+// 003-04: the note whose coordinate is currently shown as an on-map marker
+// (tier 2). Empty == none. Set by "Show on map", cleared when that note's
+// coordinate is cleared or the note is deleted. Only ever drawn while the game's
+// world map is open (MumbleContext UiState IsMapOpen bit).
+std::string g_ShowOnMapId;
 
 // Read the player's current continent position + map from the Nexus MumbleLink
 // data resource (003-02 AC1). Returns nullopt when the link is unavailable
@@ -121,7 +128,46 @@ void RenderPanel()
         {
             ImGui::TextUnformatted(notes::format_coordinate(*note.coordinate).c_str());
             ImGui::SameLine();
-            if (ImGui::SmallButton("Clear")) { g_Store->clear_coordinate(note.id); }
+            if (ImGui::SmallButton("Clear"))
+            {
+                g_Store->clear_coordinate(note.id);
+                if (g_ShowOnMapId == note.id) { g_ShowOnMapId.clear(); }
+            }
+
+            // --- 003-04: coordinate actions (only offered when set, AC3) -------
+            // "Copy coordinate" is the guaranteed clipboard baseline (AC2/AC4):
+            // plain pasteable text for chat, NOT a clickable link (ADR-0005 —
+            // the clickable waypoint chat-code is the deferred UC-8 fast-follow),
+            // so the label says "Copy", never "Share link".
+            const std::string share = notes::format_coordinate(*note.coordinate);
+            if (ImGui::SmallButton("Copy coordinate"))
+            {
+                ImGui::SetClipboardText(share.c_str());
+            }
+            // "Show on map" (AC1). Tier 1 (always works): press the single, first-
+            // class Nexus GameBind that opens the map centred on the player, then
+            // copy the coordinate — GameBinds_PressAsync is the ONLY game-driving
+            // call permitted (AC5); no input/text injection. Tier 2 (best-effort,
+            // ADR-0005 A-1, verified in-game): flag this note so AddonRender draws
+            // our own marker at its projected pixel once the map is open. If the
+            // GameBinds surface is missing, tier 1 is unavailable but the clipboard
+            // copy above still is (AC4) — shown as greyed hint (ImGui 1.80 has no
+            // BeginDisabled).
+            ImGui::SameLine();
+            if (g_API && g_API->GameBinds_PressAsync)
+            {
+                if (ImGui::SmallButton("Show on map"))
+                {
+                    g_API->GameBinds_PressAsync(GB_MapToggle);      // tier 1
+                    g_API->GameBinds_PressAsync(GB_MapFocusPlayer); // tier 1
+                    ImGui::SetClipboardText(share.c_str());         // baseline copy
+                    g_ShowOnMapId = note.id;                        // tier 2 marker
+                }
+            }
+            else
+            {
+                ImGui::TextDisabled("Show on map (unavailable)");
+            }
         }
         // "Stamp here" captures the current position (AC1). ImGui 1.80 has no
         // BeginDisabled, so when the link isn't live we show greyed hint text
@@ -151,12 +197,70 @@ void RenderPanel()
     {
         g_Store->remove(to_delete);
         g_EditBuffers.erase(to_delete);
+        if (g_ShowOnMapId == to_delete) { g_ShowOnMapId.clear(); }
+    }
+}
+
+// Tier-2 show-on-map marker (003-04 AC1). Draws our OWN marker where the flagged
+// note's continent coordinate projects onto the opened world map — reading only
+// the public MumbleLink + NexusLink and drawing our own pixels (ADR-0005 Option
+// B: no map-control-by-coordinate, no injection, no memory writes). Best-effort
+// and A-1-gated: the projection inputs (MapCenter/MapScale tracking the *open*
+// map, and its on-screen pixel rect) are runtime-unverified — absolute placement
+// is the manual in-game DoD; tier 1 (map-open-on-player + clipboard) is the
+// guaranteed fallback and already fired when the button was pressed.
+void DrawMapMarker()
+{
+    if (g_ShowOnMapId.empty() || !g_Store) { return; }
+    if (!g_API || !g_API->DataLink_Get)    { return; }
+
+    const auto* link =
+        static_cast<const notes::MumbleLink*>(g_API->DataLink_Get(DL_MUMBLE_LINK));
+    if (!link || link->UiTick == 0) { return; } // link not live yet
+    const notes::MumbleContext& ctx = link->ContextData;
+    if (!notes::is_map_open(ctx.UiState)) { return; } // only on the open world map
+
+    // Build the viewport from MumbleLink + the map's on-screen pixel rect. The
+    // open map is ~fullscreen, so NexusLinkData's Width/Height is the likely rect
+    // (A-1 (ii)); fall back to the ImGui display size if NexusLink is absent.
+    notes::MapViewport vp;
+    vp.center_x = ctx.MapCenterX;
+    vp.center_y = ctx.MapCenterY;
+    vp.scale    = ctx.MapScale;
+    const auto* nl =
+        static_cast<const NexusLinkData_t*>(g_API->DataLink_Get(DL_NEXUS_LINK));
+    if (nl && nl->Width > 0 && nl->Height > 0)
+    {
+        vp.screen_w = static_cast<float>(nl->Width);
+        vp.screen_h = static_cast<float>(nl->Height);
+    }
+    else
+    {
+        const ImVec2 d = ImGui::GetIO().DisplaySize;
+        vp.screen_w = d.x;
+        vp.screen_h = d.y;
+    }
+
+    for (const auto& note : g_Store->notes())
+    {
+        if (note.id != g_ShowOnMapId || !note.coordinate) { continue; }
+        const notes::ScreenPoint p = notes::project_to_screen(*note.coordinate, vp);
+        ImDrawList* draw = ImGui::GetForegroundDrawList();
+        draw->AddCircleFilled(ImVec2(p.x, p.y), 6.0f, IM_COL32(255, 80, 80, 235));
+        draw->AddCircle(ImVec2(p.x, p.y), 9.0f, IM_COL32(255, 255, 255, 235),
+                        0, 2.0f);
+        break;
     }
 }
 
 // Registered as an RT_Render callback; Nexus calls it every frame.
 void AddonRender()
 {
+    // The tier-2 map marker draws whenever the world map is open and a note is
+    // flagged — independent of the notes panel being open (the player has toggled
+    // to the full map). DrawMapMarker self-gates on all preconditions.
+    DrawMapMarker();
+
     if (!g_PanelOpen) { return; }
 
     const ImVec2 display = ImGui::GetIO().DisplaySize;
@@ -227,6 +331,7 @@ void AddonUnload()
     delete g_Store;
     g_Store = nullptr;
     g_EditBuffers.clear();
+    g_ShowOnMapId.clear();
     g_API = nullptr;
 }
 
