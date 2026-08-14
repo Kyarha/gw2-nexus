@@ -68,4 +68,11 @@ Coordinate unproject_from_screen(const ScreenPoint& p, const MapViewport& vp,
 // MumbleLink layout (see notes/src/mumble_link.h) and is confirmed in-game.
 bool is_map_open(std::uint32_t ui_state);
 
+// True when a projected screen point lies within the viewport's on-screen
+// rectangle. The tier-2 marker uses this to cull a note that projects off the
+// visible map (e.g. the map is panned away from the note) rather than drawing a
+// confidently-placed dot at an arbitrary edge/off-screen pixel. Pure, so the cull
+// boundary is testable off-game.
+bool is_within_viewport(const ScreenPoint& p, const MapViewport& vp);
+
 } // namespace notes

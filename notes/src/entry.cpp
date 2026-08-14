@@ -244,7 +244,16 @@ void DrawMapMarker()
     for (const auto& note : g_Store->notes())
     {
         if (note.id != g_ShowOnMapId || !note.coordinate) { continue; }
+        // Continent coords only agree within the same continent, so a note
+        // stamped on a different map than the one currently open would project
+        // against a mismatched viewport and land wrong. Only draw when the open
+        // map matches the note's map (craft review, 003-04). If they differ, the
+        // tier-1 clipboard copy still told the player where to go.
+        if (note.coordinate->map_id != ctx.MapId) { break; }
         const notes::ScreenPoint p = notes::project_to_screen(*note.coordinate, vp);
+        // Cull a note that projects off the visible map (panned away) rather than
+        // pinning a confidently-wrong dot at an arbitrary edge pixel.
+        if (!notes::is_within_viewport(p, vp)) { break; }
         ImDrawList* draw = ImGui::GetForegroundDrawList();
         draw->AddCircleFilled(ImVec2(p.x, p.y), 6.0f, IM_COL32(255, 80, 80, 235));
         draw->AddCircle(ImVec2(p.x, p.y), 9.0f, IM_COL32(255, 255, 255, 235),

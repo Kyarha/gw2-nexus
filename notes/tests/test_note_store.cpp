@@ -483,6 +483,29 @@ TEST_CASE("is_map_open reads the IsMapOpen bit of UiState (003-04 AC1)")
     CHECK_FALSE(notes::is_map_open(0x00FEu));      // everything but bit 0
 }
 
+// --- AC1 (tier 2 cull): a note projecting off the visible map is not drawn -----
+TEST_CASE("is_within_viewport culls points outside the on-screen map rect (003-04 AC1)")
+{
+    const notes::MapViewport vp = sample_viewport(); // rect (0,0)–(1920,1080)
+
+    // Centre point is inside.
+    CHECK(notes::is_within_viewport(
+        notes::project_to_screen(notes::Coordinate{15, vp.center_x, vp.center_y}, vp), vp));
+    // Corners of the rect are inside (inclusive bounds).
+    CHECK(notes::is_within_viewport(notes::ScreenPoint{0.0f, 0.0f}, vp));
+    CHECK(notes::is_within_viewport(notes::ScreenPoint{1920.0f, 1080.0f}, vp));
+    // Just outside each edge is culled.
+    CHECK_FALSE(notes::is_within_viewport(notes::ScreenPoint{-1.0f, 500.0f}, vp));
+    CHECK_FALSE(notes::is_within_viewport(notes::ScreenPoint{1921.0f, 500.0f}, vp));
+    CHECK_FALSE(notes::is_within_viewport(notes::ScreenPoint{500.0f, -1.0f}, vp));
+    CHECK_FALSE(notes::is_within_viewport(notes::ScreenPoint{500.0f, 1081.0f}, vp));
+    // A continent point far from centre projects off-screen and is culled:
+    // +8000 units / scale 4 = +2000 px from centre (960,540) -> x=2960 > 1920.
+    CHECK_FALSE(notes::is_within_viewport(
+        notes::project_to_screen(
+            notes::Coordinate{15, vp.center_x + 8000.0f, vp.center_y}, vp), vp));
+}
+
 // --- AC2/AC4: the share/clipboard text reuses format_coordinate ---------------
 // AC2 says "share to chat" copies a formatted coordinate string; the glue does
 // SetClipboardText(format_coordinate(...).c_str()). No distinct paste form is
