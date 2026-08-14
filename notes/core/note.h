@@ -13,9 +13,9 @@ namespace notes {
 // Coordinate space (AC5, resolved this slice): GW2 **continent coordinates** —
 // the 2D map space the in-game world map and the `/v2/maps` API share — plus the
 // `map_id` they are relative to. Captured from the GW2 MumbleLink context
-// (`MumbleContext.mapId` + `playerX`/`playerY`); see notes/src/mumble_link.h and
+// (`MumbleContext.MapId` + `PlayerX`/`PlayerY`); see notes/src/mumble_link.h and
 // the slice's deviation log for the field/units grounding. The 3D
-// `fAvatarPosition` (metres) is deliberately NOT stored here — that world-space
+// `AvatarPosition` (metres) is deliberately NOT stored here — that world-space
 // precision is only needed for world-pinned notes (UC-11), which are out of
 // scope for spec 003.
 struct Coordinate {

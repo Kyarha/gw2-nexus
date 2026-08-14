@@ -176,8 +176,10 @@ TEST_CASE("a versioned file with extra/unknown fields loads forward-compatibly (
         doc["schema_version"] = notes::NoteStore::kSchemaVersion;
         doc["future_top_level"] = "ignore me";
         doc["notes"] = json::array();
+        // `future_note_field` is a genuinely-unknown key (unlike `coordinate`,
+        // which is a known field as of 003-02) — it must be ignored, not rejected.
         doc["notes"].push_back(json{
-            {"id", "7"}, {"text", "kept"}, {"coordinate", {1, 2, 3}}});
+            {"id", "7"}, {"text", "kept"}, {"future_note_field", 42}});
         std::ofstream out(tmp.path, std::ios::binary);
         out << doc.dump(2);
     }
@@ -334,6 +336,23 @@ TEST_CASE("a malformed coordinate is dropped, the rest of the note is kept (003-
         std::ofstream out(tmp.path, std::ios::binary);
         out << R"({"schema_version":2,"notes":[)"
                R"({"id":"1","text":"kept","coordinate":{"map_id":15}}]})";
+    }
+    notes::NoteStore store(tmp.path);
+    REQUIRE(store.notes().size() == 1);
+    CHECK(store.notes()[0].text == "kept");
+    CHECK_FALSE(store.notes()[0].coordinate.has_value());
+}
+
+TEST_CASE("a coordinate with non-numeric fields is dropped, not coerced to map 0 (003-02 AC2)")
+{
+    TempStorePath tmp;
+    {
+        // All three keys present but wrong-typed: must degrade to "no coordinate"
+        // (nullopt), NOT a phantom {0,0,0} at map 0 — consistent with the live
+        // reader's map-0 refusal.
+        std::ofstream out(tmp.path, std::ios::binary);
+        out << R"({"schema_version":2,"notes":[)"
+               R"({"id":"1","text":"kept","coordinate":{"map_id":"x","x":null,"y":[]}}]})";
     }
     notes::NoteStore store(tmp.path);
     REQUIRE(store.notes().size() == 1);

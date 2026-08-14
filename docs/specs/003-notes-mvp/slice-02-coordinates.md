@@ -1,9 +1,9 @@
 ---
-status: IN_PROGRESS
+status: RECONCILED
 dependencies: [003-01]
-last_verified:
+last_verified: 2026-08-13
 frame_review: true
-claimed_by: main
+claimed_by: claude/notes-coordinates-003-02
 ---
 
 <!-- jig grounding (spec 064-02 / ADR-0020): ground factual claims about runnable
@@ -49,10 +49,10 @@ No actions yet (those are 003-04); this slice grows the note record along the
       and serialize/deserialize round-trip of a coordinate-bearing note are
       unit-tested off-game; each test shown to fail when its feature is removed.
       The MumbleLink read itself is the manual/in-game portion — stated honestly.
-- [ ] Reviewed by the `reviewer` subagent (compliance + craft recorded and clear).
-- [ ] Deviation log + reconciliation sweep produced (including the resolved
+- [x] Reviewed by the `reviewer` subagent (compliance + craft recorded and clear).
+- [x] Deviation log + reconciliation sweep produced (including the resolved
       coordinate-space decision, AC5).
-- [ ] Reconciliation review passed.
+- [x] Reconciliation review passed.
 
 ## Assumptions
 
@@ -68,8 +68,6 @@ No actions yet (those are 003-04); this slice grows the note record along the
 the 003-04 actions act on.
 
 ### Deviation log (after reconciliation)
-
-_Implementation notes (in progress; reconciliation pending in-game verification)._
 
 - **AC5 — coordinate space resolved: GW2 continent coordinates.** A note's
   coordinate is stored as `{ map_id: uint32, x: float, y: float }` — the 2D map
@@ -111,7 +109,59 @@ _Implementation notes (in progress; reconciliation pending in-game verification)
   notes-core build (which excludes the Windows-only glue) but a hard MSVC error
   (`C2065`) on CI. Fixed by declaring the helper after the `g_API` global (pure
   reorder). CI green afterward; DLL built, installed, and verified in-game.
+- **Craft-review nits applied (all non-blocking).** The craft pass returned
+  `pass` with four `[nit]`s, all fixed during reconciliation: (a) `note.h`
+  doc-comment field names aligned to the real `MumbleContext.MapId`/`PlayerX`/
+  `PlayerY` casing; (b) the 003-01 forward-compat test fixture now injects a
+  genuinely-unknown key (`future_note_field`) instead of `coordinate`, which is
+  a known field as of this slice; (c) `parse_coordinate` now returns `nullopt`
+  on a present-but-non-numeric field (via const-safe `find()`) instead of
+  coercing to a phantom `{0,0,0}` at map 0 — consistent with the live reader's
+  map-0 refusal — with a new test; (d) `entry.cpp` gained a direct
+  `#include <optional>` rather than relying on transitive inclusion. Suite now
+  16 cases / 80 assertions green.
 
 ### Reconciliation sweep
 
-_TBD at reconciliation (after in-game verification closes the DoD)._
+Drift-prone surfaces checked (`updated` / `no-op` / `deferred`). The code files
+(`note.h`, `note.cpp`, `note_store.*`, `entry.cpp`, `mumble_link.h`,
+`test_note_store.cpp`) are covered by the narrative deviation bullets above; this
+list covers the doc/build surfaces:
+
+- **`notes/CMakeLists.txt`** — `updated`: added `core/note.cpp` to the
+  `notes-core` library (the new translation unit for `format_coordinate()`).
+
+- **`docs/architecture.md § Data model`** — `updated`: records the resolved
+  coordinate space (continent coords + `map_id`), the schema v1→v2 bump, and the
+  runtime-unverified A1 note. § Module boundaries / Contract surfaces unchanged
+  (the note JSON is private + versioned, not a caller-facing surface).
+- **`docs/inbox.md` line 19** (003-01 arch review: "add a version-dispatch hook
+  when an *incompatible* schema bump lands, e.g. in 003-02") — `no-op`,
+  annotated: 003-02's bump is **additive/compatible** (a v1 file loads because
+  the `coordinate` key is simply absent → `nullopt`), so no dispatch point was
+  needed. The item stays open for a genuinely incompatible future bump; a dated
+  note records that 003-02 did not trigger it.
+- **`docs/inbox.md` line 16** (panel not auto-hidden in cutscenes/loading/menus)
+  — `deferred`: unrelated cross-cutting concern; 003-02 only added a non-live
+  read-refusal on the *stamp* action, not panel visibility. Left for its slice.
+- **`docs/memory/glossary.md`** — `updated` (via memory-sync): added **MumbleLink**
+  and **continent coordinates** as first-use domain terms this slice introduces.
+- **`CLAUDE.md` primer** — `no-op`: spec 003 is not closing (later slices remain),
+  so no compress-on-close-out; no per-slice invariant needed in the primer.
+- **Use-case coverage (advisory)** — `no-op`: `workflow.py coverage` reports the
+  expected out-of-scope gaps (UC-11 world-pin, crafting UCs, etc.); 003-02 is
+  correctly traced under spec 003, no scope creep. Non-blocking.
+
+**Leanness sweep:** no over-build. The record grew by exactly the optional
+`Coordinate` the ACs required; no speculative fields, config knobs, or
+abstraction. `AvatarPosition` (3D) was deliberately *not* stored. The only
+robustness addition (non-numeric → `nullopt`) was a review-flagged consistency
+fix with a test, not speculative generality.
+
+**ADR judgment:** the coordinate-space choice is load-bearing with a rejected
+alternative (`AvatarPosition`), but it is recorded in `architecture.md § Data
+model` — the front-door doc 003-04 will read before consuming the shape — and in
+this deviation log. It changes no module boundary or public contract (the JSON is
+private + versioned). Judged adequately captured there; **no ADR minted**. If
+003-04 finds the continent-space choice constrains the actions in a
+surprising way, promote it then.

@@ -32,15 +32,23 @@ std::optional<Coordinate> parse_coordinate(const json& item)
 {
     if (!item.contains("coordinate")) { return std::nullopt; }
     const auto& c = item["coordinate"];
-    if (!c.is_object() || !c.contains("map_id") || !c.contains("x") ||
-        !c.contains("y"))
+    if (!c.is_object()) { return std::nullopt; }
+    // find() is const-safe (operator[] on a const json with a missing key is UB);
+    // require all three fields present AND numeric. A missing OR non-numeric field
+    // -> "no coordinate", consistent with the live reader's map-0 refusal (never a
+    // phantom {0,0,0} at map 0).
+    const auto mid = c.find("map_id");
+    const auto xi  = c.find("x");
+    const auto yi  = c.find("y");
+    if (mid == c.end() || xi == c.end() || yi == c.end() ||
+        !mid->is_number() || !xi->is_number() || !yi->is_number())
     {
         return std::nullopt;
     }
     Coordinate out;
-    out.map_id = c["map_id"].is_number() ? c.value("map_id", 0u) : 0u;
-    out.x      = c["x"].is_number() ? c.value("x", 0.0f) : 0.0f;
-    out.y      = c["y"].is_number() ? c.value("y", 0.0f) : 0.0f;
+    out.map_id = mid->get<std::uint32_t>();
+    out.x      = xi->get<float>();
+    out.y      = yi->get<float>();
     return out;
 }
 
