@@ -11,48 +11,52 @@ frame_review: true
 ## Slice 003-04 — coordinate actions
 
 **Goal:** Make a note's coordinate *actionable* — show-on-map and share-to-chat —
-using only the mechanism(s) the 003-03 spike confirmed are supported, with a safe
-clipboard fallback for any action the platform doesn't allow. Delivers UC-6 and
-UC-7 (or the honestly-scoped feasible subset).
-
-> **These acceptance criteria are provisional until 003-03 (the spike) closes.**
-> The spike's Outcome finalizes them (its DoD requires updating this slice before
-> it leaves DRAFT). The shape below is the *intended* end state; the spike decides
-> which parts survive and by what mechanism.
+using only the mechanism [ADR-0005](../../decisions/adr-0005-coordinate-action-mechanism.md)
+confirmed: our own MumbleLink-driven overlay + clipboard, never map-control-by-
+coordinate and never input/text injection. Delivers UC-6 and UC-7 in their feasible
+subset + clipboard fallback.
 
 **DoR:**
-- ✅ 003-03 DONE — feasible mechanisms decided and recorded (ADR / resolved open
-  question); this slice's ACs updated to match.
-- ✅ 003-02 DONE — notes carry a coordinate in a defined space.
+- ✅ 003-03 DONE — feasible mechanism decided and recorded in
+  [ADR-0005](../../decisions/adr-0005-coordinate-action-mechanism.md); these ACs
+  finalized from it.
+- ✅ 003-02 DONE — notes carry a coordinate in a defined (continent) space.
 
-**Acceptance Criteria (provisional — finalized by 003-03):**
+**Acceptance Criteria** (finalized from [ADR-0005](../../decisions/adr-0005-coordinate-action-mechanism.md)):
 
-1. **Show on map (UC-6).** From a coordinate-bearing note, a "show on map" action
-   surfaces the location by the spike-confirmed mechanism (e.g. an overlay marker
-   on the world map, or centring the map) — or, if the spike finds no supported
-   map control, this AC is re-scoped to the confirmed feasible form and the
-   limitation recorded, not silently dropped.
-2. **Share to chat (UC-7).** A "share to chat" action puts the coordinate into
-   game chat by the spike-confirmed mechanism. If the spike finds chat injection
-   unsupported, this degrades to the confirmed fallback (e.g. copy a coordinate /
-   nearest-waypoint string to the clipboard for the player to paste), and the AC
-   is worded to the delivered behavior — no claim of a clickable link the
-   platform can't produce.
+1. **Show on map (UC-6) — own marker on the opened map, tier-1 fallback.** From a
+   coordinate-bearing note, a "show on map" action **(tier 2)** draws our own marker
+   at the note's coordinate on the *opened world map*, projected from the MumbleLink
+   `MapCenter`/`MapScale` + screen bounds (per ADR-0005). If the open-map projection
+   inputs prove unavailable in-game (ADR-0005 assumption A-1), the action **degrades
+   in the same slice to tier 1**: press `GB_MapToggle`+`GB_MapFocusPlayer` to open
+   the map on the player and copy the coordinate to clipboard. The delivered tier is
+   recorded in the deviation log; no map-control-by-arbitrary-coordinate is claimed
+   (none exists). The 3D world-pinned marker (UC-11) is out of scope.
+2. **Share to chat (UC-7) — clipboard copy.** A "share to chat" action copies a
+   formatted coordinate string (e.g. `Map 1155 — (49415, 32118)`) to the clipboard
+   for the player to paste into chat. **No clickable in-game link is claimed** — a
+   clickable nearest-waypoint chat-code needs the GW2 `/v2` REST API and is deferred
+   to the UC-8 fast-follow (ADR-0005). Wording in UI/copy must not imply a clickable
+   link.
 3. **Actions are only offered when valid.** The actions appear only on notes that
    have a coordinate; a text-only note shows none.
-4. **Clipboard fallback always works.** Regardless of map/chat outcome,
+4. **Clipboard fallback always works.** Regardless of map outcome,
    copy-the-coordinate-to-clipboard is available (ImGui `SetClipboardText`,
    present in the pinned ImGui 1.80) as the guaranteed baseline.
-5. **No unsupported/memory-reading techniques.** Nothing here uses input
-   injection or memory reading the vision rules out of scope; the mechanism is
-   the supported one the spike blessed.
+5. **No unsupported/injection techniques.** Nothing here uses input injection
+   (`WndProc_SendToGameOnly` char-faking) or memory reading; the only game-driving
+   call permitted is `GameBinds_PressAsync` for the tier-1 map-open (a first-class
+   Nexus API, single user-initiated key), per ADR-0005.
 
 **DoD:**
 - [ ] Final ACs (post-spike) pass; each action verified in-game and recorded with
       a screenshot in the deviation log.
 - [ ] Automated coverage where it applies: the **string/format** a share action
-      produces (coordinate → chat/clipboard text) is unit-tested off-game; the
-      in-game action wiring is the manual portion, stated honestly.
+      produces (coordinate → chat/clipboard text) **and** the pure
+      **continent→map-pixel projection** math (tier-2) are unit-tested off-game;
+      the MumbleLink read + in-game action wiring is the manual portion, stated
+      honestly.
 - [ ] Reviewed by the `reviewer` subagent (compliance + craft recorded and clear).
 - [ ] Deviation log + reconciliation sweep produced; any gap between the intended
       and the delivered (feasible) behavior recorded plainly.
@@ -60,9 +64,17 @@ UC-7 (or the honestly-scoped feasible subset).
 
 ## Assumptions
 
-- **None carried independently** — the load-bearing feasibility assumption (A2)
-  is resolved by 003-03 before this slice starts. If the spike leaves any residual
-  unknown, it is listed here at that point (and would re-trigger the frame pass).
+- **A-1 (carried from [ADR-0005](../../decisions/adr-0005-coordinate-action-mechanism.md), load-bearing, unverified):**
+  the opened-world-map projection is derivable from data the addon already reads —
+  (i) MumbleLink `MapCenter`/`MapScale` track the *open-map* viewport, and (ii) the
+  open map's on-screen pixel rectangle is obtainable (MumbleLink gives only the
+  compass rect; the open-map bound must be derived, likely from `NexusLinkData_t`
+  screen size). Confirmed with a debug-dump during this slice's in-game
+  verification. **If either input fails, AC1 degrades to tier 1** (the built-in
+  fallback), or tier 2 pulls in `/v2/maps continent_rect`. This residual is why the
+  slice keeps `frame_review: true`.
+- The high-level feasibility question (A2) is **resolved** by 003-03 / ADR-0005 —
+  only the projection-input residual above remains.
 
 **Anti-horizontal-phasing check:** after this slice a coordinate in a note is
 something the player can act on in-game (map + chat/clipboard) — the payoff of the
