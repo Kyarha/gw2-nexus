@@ -27,24 +27,6 @@
 
 namespace {
 
-// Read the player's current continent position + map from the Nexus MumbleLink
-// data resource (003-02 AC1). Returns nullopt when the link is unavailable
-// (DataLink_Get missing / not yet published) or plainly not live yet — a fresh
-// link reads UiTick == 0 / MapId == 0 before the game has ticked, and stamping
-// (0,0) on map 0 would be a false capture. The read itself is the manual in-game
-// portion of this slice (the struct layout is runtime-unverified; see
-// mumble_link.h); the addon never blocks on it.
-std::optional<notes::Coordinate> ReadCurrentCoordinate()
-{
-    if (!g_API || !g_API->DataLink_Get) { return std::nullopt; }
-    const auto* link =
-        static_cast<const notes::MumbleLink*>(g_API->DataLink_Get(DL_MUMBLE_LINK));
-    if (!link || link->UiTick == 0) { return std::nullopt; } // not live yet
-    const notes::MumbleContext& ctx = link->ContextData;
-    if (ctx.MapId == 0) { return std::nullopt; } // no valid map (loading screen)
-    return notes::Coordinate{ctx.MapId, ctx.PlayerX, ctx.PlayerY};
-}
-
 // Identifiers Nexus keys registrations by; must be stable across load/unload.
 constexpr const char* kKeybindId     = "KB_NOTES_TOGGLE";
 constexpr const char* kQuickAccessId = "QA_NOTES";
@@ -61,6 +43,25 @@ AddonDefinition_t g_AddonDef{};
 AddonAPI_t*       g_API   = nullptr;
 notes::NoteStore* g_Store = nullptr;
 bool              g_PanelOpen = false;
+
+// Read the player's current continent position + map from the Nexus MumbleLink
+// data resource (003-02 AC1). Returns nullopt when the link is unavailable
+// (DataLink_Get missing / not yet published) or plainly not live yet — a fresh
+// link reads UiTick == 0 / MapId == 0 before the game has ticked, and stamping
+// (0,0) on map 0 would be a false capture. The read itself is the manual in-game
+// portion of this slice (the struct layout is runtime-unverified; see
+// mumble_link.h); the addon never blocks on it. Declared after g_API so it is in
+// scope here (this is Windows-only glue — not compiled in the macOS notes-core).
+std::optional<notes::Coordinate> ReadCurrentCoordinate()
+{
+    if (!g_API || !g_API->DataLink_Get) { return std::nullopt; }
+    const auto* link =
+        static_cast<const notes::MumbleLink*>(g_API->DataLink_Get(DL_MUMBLE_LINK));
+    if (!link || link->UiTick == 0) { return std::nullopt; } // not live yet
+    const notes::MumbleContext& ctx = link->ContextData;
+    if (ctx.MapId == 0) { return std::nullopt; } // no valid map (loading screen)
+    return notes::Coordinate{ctx.MapId, ctx.PlayerX, ctx.PlayerY};
+}
 
 // Per-note editable text buffers, keyed by note id. Kept out of notes-core so
 // the core stays UI-agnostic. ImGui 1.80's InputText needs a mutable char
