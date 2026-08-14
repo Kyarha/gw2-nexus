@@ -1,10 +1,11 @@
 ---
-status: DRAFT
+status: IN_PROGRESS
 dependencies: [003-01, adr-0004]
 last_verified:
 arch_review: true
 frame_review: true
 design_review: true
+claimed_by: claude/notes-native-theme-003-06
 ---
 
 <!-- jig grounding (spec 064-02 / ADR-0020): ground factual claims about runnable
@@ -58,9 +59,47 @@ external art project.
    renders through the shared theme; the note logic is unchanged (the 003-01 chrome
    factoring is reused, not rewritten).
 4. **Design values match the mockup (extracted ACs).** The concrete target values
-   from the fidelity reference [`docs/designs/notes-v1.0/`](../../designs/notes-v1.0/)
-   — panel background/translucency, trim color, corner/border treatment, font,
-   spacing — are enumerated here and matched. *(Filled from the mockup at DoR.)*
+   below are extracted from the fidelity reference
+   [`docs/designs/notes-v1.0/`](../../designs/notes-v1.0/) (`Notes Overlay.dc.html`
+   — all-CSS, no image assets; the frame is a stacked `box-shadow` ring set + four
+   inline-SVG corner filigrees, which the ImGui default theme reproduces with
+   layered `ImDrawList` primitives). Colors are given as the mockup's `rgb`/`rgba`;
+   ImGui consumes them as `ImU32`/`ImVec4` (alpha carried through). These are the
+   values the theme layer (AC1) applies and the design-eval (DoD) scores against:
+
+   | Token | Target value (from mockup) |
+   |---|---|
+   | Panel fill | `rgba(22,19,14,0.90)` — warm near-black, 90% opaque |
+   | Panel corner radius | `2px` (panel), `3px` (controls/cards/inputs) |
+   | Structural border | `1px` bronze `rgba(96,76,44,0.9)` |
+   | Frame rings (outer→inner) | dark-bronze band `rgba(74,58,34,0.7)`; near-black separator `rgba(18,15,9,0.9)`; outer gold glow `rgba(120,96,56,0.32)`; inner vignette `rgba(0,0,0,0.6)`; top gold bevel highlight `rgba(226,196,124,0.22)` |
+   | Corner ornament | `30×30px` brass filigree bracket, stroke `#caa85f` / accent `#8a6f34`, dot `#e6c86a`, one per corner (mirrored) |
+   | Trim gold (bright) | text/icon `#e6c86a`, `#f0d78a`; hover `#ffe89e` |
+   | Trim bronze (structural lines) | `rgba(150,120,70,·)`, `rgba(180,150,90,·)` |
+   | Heading font | serif display — Cinzel in mockup; title `20px/700`, `letter-spacing 0.03em`, `#e6c86a` |
+   | Body font | serif — Spectral in mockup; body `14px`, `line-height 1.62`, `#cfc7b6`; card title `#ecdcae` |
+   | Muted text | `rgba(190,180,160,0.6)` |
+   | Accent colors | coordinate/link teal `#7fd0d6`/`#86d4da`; character green `#9fd8b0`; zone blue `#a7c4ea`; danger red `#e8998a` |
+   | Panel content padding | `14–16px` |
+   | Note-card padding / gap | padding `16px 15px 14px`; `12px` gap between cards |
+   | Title-bar padding | `12px 14px 12px 16px`; bottom border `rgba(150,120,70,0.28)` |
+   | Primary button | fill gradient `rgba(74,62,38,0.9)→rgba(44,37,22,0.9)`, border `rgba(180,150,90,0.55)`, text `#f0d78a`, radius `3px`, padding `7px 13px`; hover border `rgba(220,185,110,0.85)`, text `#ffe89e` |
+   | Separators | `1px` `rgba(150,120,70,0.18–0.28)` |
+   | Scrollbar | width `10px`, thumb `rgba(180,150,90,0.28)`, hover `rgba(180,150,90,0.45)`, radius `6px` |
+
+   **Font scope (frame-critique resolution, 2026-08-13; lightweight decision,
+   recorded at reconciliation).** ImGui renders from a bundled atlas, not
+   system/web fonts, so Cinzel/Spectral are *reference* serifs. The mockup's serif
+   *typeface* is an **explicit non-target of the design-eval hard gate** (see DoD)
+   — the default theme matches size/color against ImGui's built-in font (weight and
+   letter-spacing are deferred alongside the serif-bundling enhancement —
+   ImGui's built-in ProggyClean atlas has no bold variant or letter-spacing),
+   and the vision judge does not fail on font-family. Bundling the actual
+   open-licensed serifs (both SIL OFL — redistributable, ADR-0004-clean) into the
+   atlas via `ImFontAtlas::AddFontFromFileTTF` is a **separate later enhancement**,
+   not part of this slice; it is what would later close the typography dimension.
+   This keeps the hard gate reachable (it scores only what ImGui can render) while
+   leaving typography honestly deferred rather than silently claimed.
 5. **Non-intrusive (design principle #3).** Respects the game's UI scale /
    transparency; the theme never fights the player.
 6. **ADR-0004 compliance baseline.** Never bundle or redistribute ArenaNet's own
@@ -72,10 +111,19 @@ external art project.
 **DoD:**
 - [ ] AC1–AC6 pass; the re-skinned panel verified in-game with a screenshot in the
       deviation log.
-- [ ] `design_review: true` — fidelity is a **hard gate**: a servo `design-eval`
-      (screenshots the running panel against the mockup reference, scores it with a
-      pinned vision judge) is the done-condition, attested read-only at REVIEWED
-      (per spec-workflow step 5a / ADR-0049). Not eyeballed.
+- [ ] `design_review: true` — fidelity is a **hard gate**, but scored against an
+      **ImGui-achievable rubric**, not the CSS mockup verbatim (frame-critique
+      resolution, 2026-08-13). A servo `design-eval` screenshots the running panel
+      against the mockup reference and scores it with a pinned vision judge on the
+      dimensions ImGui can actually reproduce: **panel fill color + translucency,
+      trim/border color, the layered frame + corner treatment, semantic accent
+      colors, and spacing/layout proportions** (the AC4 tokens). **Explicit
+      non-targets of the hard gate** (ImGui cannot reproduce these from an
+      `ImDrawList` + bundled-atlas render, so the judge must not fail on them):
+      serif *typeface* (Cinzel/Spectral — font-family fidelity is deferred to the
+      optional serif-bundling enhancement below), CSS `backdrop-filter` blur, and
+      exact `box-shadow` falloff. Attested read-only at REVIEWED (per spec-workflow
+      step 5a / ADR-0049). Not eyeballed.
 - [ ] Automated coverage where it applies: the **9-slice geometry** (inset math,
       quad placement for a given panel size) is unit-testable off-game; the
       themed render itself is the manual/in-game portion, stated honestly.

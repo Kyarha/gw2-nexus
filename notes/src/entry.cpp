@@ -25,6 +25,8 @@
 #include "core/note.h"
 #include "core/note_store.h"
 #include "mumble_link.h"
+#include "theme/theme.h"
+#include "theme/theme_imgui.h"
 
 namespace {
 
@@ -119,7 +121,13 @@ void RenderPanel()
         // note shows nothing but the "Stamp here" affordance (AC4).
         if (note.coordinate)
         {
+            // Coordinates read in the theme's teal accent (mockup: links/coords
+            // are teal #7fd0d6), so the stamped place stands out natively (AC3).
+            ImGui::PushStyleColor(
+                ImGuiCol_Text,
+                shared::theme::to_vec4(shared::theme::gw2_palette().accent_teal));
             ImGui::TextUnformatted(notes::format_coordinate(*note.coordinate).c_str());
+            ImGui::PopStyleColor();
             ImGui::SameLine();
             if (ImGui::SmallButton("Clear")) { g_Store->clear_coordinate(note.id); }
         }
@@ -164,13 +172,29 @@ void AddonRender()
                             ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
     ImGui::SetNextWindowSize(ImVec2(360.0f, 420.0f), ImGuiCond_FirstUseEver);
 
-    // Minimal, unobtrusive chrome (AC5) — NOT the ornate look (that is 003-06).
+    // Native-look theme (003-06): apply the shared theme's colors + metrics
+    // around our window only (stack-scoped, so other addons' style is untouched
+    // — AC1/AC5), then draw the default primitive frame over the window rect.
+    // The note logic (RenderPanel) is unchanged — the 003-01 chrome factoring is
+    // reused, not rewritten (AC3).
+    const shared::theme::Palette pal = shared::theme::gw2_palette();
+    const shared::theme::Metrics met = shared::theme::gw2_metrics();
+    const shared::theme::ThemeScope scope =
+        shared::theme::PushPanelStyle(pal, met); // before Begin: window vars apply
+
     const ImGuiWindowFlags flags = ImGuiWindowFlags_NoCollapse;
     if (ImGui::Begin(kWindowName, &g_PanelOpen, flags))
     {
+        const ImVec2 w_min = ImGui::GetWindowPos();
+        const ImVec2 w_size = ImGui::GetWindowSize();
+        shared::theme::DrawThemedFrame(
+            ImGui::GetWindowDrawList(), w_min,
+            ImVec2(w_min.x + w_size.x, w_min.y + w_size.y), pal, met);
         RenderPanel();
     }
     ImGui::End();
+
+    shared::theme::PopPanelStyle(scope);
 }
 
 // Keybind handler (INPUTBINDS_PROCESS): toggle the panel on press.
