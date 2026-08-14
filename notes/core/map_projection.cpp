@@ -48,4 +48,10 @@ bool is_map_open(std::uint32_t ui_state)
     return (ui_state & kUiStateMapOpen) != 0u;
 }
 
+bool is_within_viewport(const ScreenPoint& p, const MapViewport& vp)
+{
+    return p.x >= vp.screen_x && p.x <= vp.screen_x + vp.screen_w &&
+           p.y >= vp.screen_y && p.y <= vp.screen_y + vp.screen_h;
+}
+
 } // namespace notes
