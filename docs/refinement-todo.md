@@ -38,9 +38,18 @@
 
 ## Product / scope (from vision elicitation, 2026-08-12)
 
-### Decision: Order of the later two epics
-**Deferred:** Notes is first (MVP); the order of Markers vs. the Legendary / Bank tracker is undecided.
-**Resolution trigger:** When the Notes epic's MVP is usable and the next epic is picked.
+### Decision: Order and membership of the post-MVP epics
+**Deferred:** Notes is first (MVP). The post-MVP epic set has grown from two candidates to four, and both order **and membership** are now open:
+- **Markers** — world pins for gathering / farming spots (UC-12).
+- **Legendary / Bank tracker** — account-aware have-vs-need across bank, material storage, characters (part of UC-2 / UC-5).
+- **Recipe-notes (new — spec `004` candidate)** — make the Notes addon efficient for crafting; reclaims the "cook's recipe list" scope (UC-2 / UC-3 / UC-4 / UC-5), which **no spec claims today** (003 claims UC-1/6/7/9/10/13). Research: [research/recipe-notes-efficiency.md](research/recipe-notes-efficiency.md).
+- **Guild / friends shared-collaboration layer (new)** — shared notes and goals with a pledge model; a **separate addon + a small sync backend**, not a Notes feature (see the decision below). Research: [research/guild-shared-goals.md](research/guild-shared-goals.md).
+**Resolution trigger:** When the Notes epic's MVP is usable and the next epic is picked. Both new candidates were parked in the inbox (2026-08-13) as "promote to a spec after the 003 MVP lands."
+
+### Decision: Guild / friends collaboration — separate addon + backend?
+**Deferred:** The guild / friends shared-notes-and-goals idea ([research/guild-shared-goals.md](research/guild-shared-goals.md)) introduces two things the addon family does not have today: a **network sync backend** (a hosted server with group membership / join codes) and **multiplayer shared state**. This cuts against the current product posture — "Cloud target: none", "Database: none", "Private by default" ([product-vision.md](product-vision.md)); the research's pledge model (share what you *offer*, never what you *own*) exists precisely to bound what leaves each member's machine. Two sub-questions are open: (a) is it its **own addon** (`gw2-guild` / `gw2-goals`, consuming `shared/` like every other addon per [ADR-0001](decisions/adr-0001-repo-topology-versioning.md)) plus a distinct backend service, versus a mode folded into Notes; and (b) is standing up and hosting a backend within appetite at all.
+**Direction (leaning):** **separate addon + separate backend service.** The addon topology already isolates each concern as its own DLL with no addon-to-addon coupling ([architecture.md](architecture.md)); the network dependency should be quarantined out of the local-disk Notes addon; and shared pledged goals generalise beyond notes (recipes, legendaries, markers).
+**Resolution trigger:** If/when the guild-collab epic is picked (post-003). Record via an ADR — it changes the project's architecture (introduces a server, network sync, and interacts with the non-commercial-hosting constraint noted in [research/gw2-asset-reuse-policy.md](research/gw2-asset-reuse-policy.md)).
 
 ### ~~Decision: How far to push the native look~~ — RESOLVED 2026-08-12, reconciled 2026-08-13
 ~~**Deferred:** Tasteful themed panels (low effort) vs. pixel-perfect ornate 9-sliced frames (an art-asset project).~~
@@ -72,6 +81,8 @@
 **Deferred:** Plain file on disk vs. encrypted at rest.
 **Resolution trigger:** First spec that reads the GW2 API (the "clickable game references" or tracker work).
 
-### Decision: Share-coordinate-to-chat (UC-7) feasibility
-**Deferred:** Pasting a waypoint / chat-link into game chat is not confirmed through the supported Nexus API; needs a spike.
+### ~~Decision: Share-coordinate-to-chat (UC-7) feasibility~~ — RESOLVED 2026-08-13
+~~**Deferred:** Pasting a waypoint / chat-link into game chat is not confirmed through the supported Nexus API; needs a spike.~~
 **Resolution trigger:** First Notes spec that implements coordinate sharing. Spike before committing UC-7.
+**Resolved by:** [ADR-0005: Coordinate action mechanism: overlay marker + clipboard, not map-control or chat-injection](decisions/adr-0005-coordinate-action-mechanism.md).
+

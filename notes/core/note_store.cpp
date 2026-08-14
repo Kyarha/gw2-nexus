@@ -24,6 +24,34 @@ unsigned long long numeric_id(const std::string& id)
     return std::strtoull(id.c_str(), nullptr, 10);
 }
 
+// Read a note's optional coordinate (003-02). A v1 record has no `coordinate`
+// key -> nullopt (migrates forward untouched). A malformed `coordinate` (not an
+// object, or missing its numeric fields) is treated as "no coordinate" rather
+// than rejecting the whole note, mirroring load()'s keep-the-rest tolerance.
+std::optional<Coordinate> parse_coordinate(const json& item)
+{
+    if (!item.contains("coordinate")) { return std::nullopt; }
+    const auto& c = item["coordinate"];
+    if (!c.is_object()) { return std::nullopt; }
+    // find() is const-safe (operator[] on a const json with a missing key is UB);
+    // require all three fields present AND numeric. A missing OR non-numeric field
+    // -> "no coordinate", consistent with the live reader's map-0 refusal (never a
+    // phantom {0,0,0} at map 0).
+    const auto mid = c.find("map_id");
+    const auto xi  = c.find("x");
+    const auto yi  = c.find("y");
+    if (mid == c.end() || xi == c.end() || yi == c.end() ||
+        !mid->is_number() || !xi->is_number() || !yi->is_number())
+    {
+        return std::nullopt;
+    }
+    Coordinate out;
+    out.map_id = mid->get<std::uint32_t>();
+    out.x      = xi->get<float>();
+    out.y      = yi->get<float>();
+    return out;
+}
+
 } // namespace
 
 NoteStore::NoteStore(std::filesystem::path path)
@@ -49,7 +77,10 @@ void NoteStore::load()
     }
 
     // Forward-compatible read: unknown top-level fields are ignored; missing
-    // fields fall back to defaults so an older/newer file still loads (AC4).
+    // fields fall back to defaults so an older/newer file still loads (003-01 AC4).
+    // Migration is implicit-and-additive (003-02 AC2): a v1 record has no
+    // `coordinate` key, so `coordinate` stays nullopt and the note migrates
+    // forward untouched; the file is rewritten at schema v2 on the next mutation.
     if (doc.contains("notes") && doc["notes"].is_array())
     {
         for (const auto& item : doc["notes"])
@@ -59,6 +90,7 @@ void NoteStore::load()
             n.id   = item.value("id", std::string{});
             n.text = item.value("text", std::string{});
             if (n.id.empty()) { continue; } // skip malformed entries, keep the rest
+            n.coordinate = parse_coordinate(item);
             next_id_ = std::max(next_id_, numeric_id(n.id) + 1);
             notes_.push_back(std::move(n));
         }
@@ -72,7 +104,14 @@ std::string NoteStore::serialize() const
     json arr = json::array();
     for (const auto& n : notes_)
     {
-        arr.push_back(json{{"id", n.id}, {"text", n.text}});
+        json jn{{"id", n.id}, {"text", n.text}};
+        if (n.coordinate) // optional: text-only notes omit the key entirely (AC4)
+        {
+            jn["coordinate"] = json{{"map_id", n.coordinate->map_id},
+                                    {"x", n.coordinate->x},
+                                    {"y", n.coordinate->y}};
+        }
+        arr.push_back(std::move(jn));
     }
     doc["notes"] = std::move(arr);
     return doc.dump(2);
@@ -115,6 +154,26 @@ bool NoteStore::remove(const std::string& id)
                            [&](const Note& n) { return n.id == id; });
     if (it == notes_.end()) { return false; }
     notes_.erase(it);
+    persist(); // write-through (AC3)
+    return true;
+}
+
+bool NoteStore::set_coordinate(const std::string& id, Coordinate coord)
+{
+    auto it = std::find_if(notes_.begin(), notes_.end(),
+                           [&](const Note& n) { return n.id == id; });
+    if (it == notes_.end()) { return false; }
+    it->coordinate = coord; // at most one; overwrites any existing (003-02 AC1)
+    persist();              // write-through (AC3)
+    return true;
+}
+
+bool NoteStore::clear_coordinate(const std::string& id)
+{
+    auto it = std::find_if(notes_.begin(), notes_.end(),
+                           [&](const Note& n) { return n.id == id; });
+    if (it == notes_.end()) { return false; }
+    it->coordinate.reset();
     persist(); // write-through (AC3)
     return true;
 }

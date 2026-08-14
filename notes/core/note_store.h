@@ -19,7 +19,9 @@ namespace notes {
 class NoteStore {
 public:
     // Bump when the on-disk shape changes; older files migrate forward.
-    static constexpr int kSchemaVersion = 1;
+    //   v1 (003-01): { id, text }
+    //   v2 (003-02): + optional `coordinate` { map_id, x, y }
+    static constexpr int kSchemaVersion = 2;
 
     // Load the store from `path`. A missing file yields an empty store; a
     // corrupt/unparseable file recovers to an empty store without throwing.
@@ -40,6 +42,16 @@ public:
     // Delete the note with `id`; write-through persists. Returns true if a note
     // was removed.
     bool remove(const std::string& id);
+
+    // Stamp the note with `id` with a coordinate (003-02 AC1); write-through
+    // persists. A note has at most one coordinate — this overwrites any existing
+    // one. No-op returning false if `id` is unknown.
+    bool set_coordinate(const std::string& id, Coordinate coord);
+
+    // Clear the note's coordinate (003-02 AC1); write-through persists. Returns
+    // true if a note was updated (false if `id` is unknown). Clearing an already
+    // coordinate-less note still returns true (the note exists and is cleared).
+    bool clear_coordinate(const std::string& id);
 
     // Serialize the current state to the JSON string form written to disk.
     std::string serialize() const;

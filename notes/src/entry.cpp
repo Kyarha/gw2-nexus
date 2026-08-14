@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -21,7 +22,9 @@
 #include "imgui.h"
 #include "Nexus.h"
 
+#include "core/note.h"
 #include "core/note_store.h"
+#include "mumble_link.h"
 
 namespace {
 
@@ -41,6 +44,25 @@ AddonDefinition_t g_AddonDef{};
 AddonAPI_t*       g_API   = nullptr;
 notes::NoteStore* g_Store = nullptr;
 bool              g_PanelOpen = false;
+
+// Read the player's current continent position + map from the Nexus MumbleLink
+// data resource (003-02 AC1). Returns nullopt when the link is unavailable
+// (DataLink_Get missing / not yet published) or plainly not live yet — a fresh
+// link reads UiTick == 0 / MapId == 0 before the game has ticked, and stamping
+// (0,0) on map 0 would be a false capture. The read itself is the manual in-game
+// portion of this slice (the struct layout is runtime-unverified; see
+// mumble_link.h); the addon never blocks on it. Declared after g_API so it is in
+// scope here (this is Windows-only glue — not compiled in the macOS notes-core).
+std::optional<notes::Coordinate> ReadCurrentCoordinate()
+{
+    if (!g_API || !g_API->DataLink_Get) { return std::nullopt; }
+    const auto* link =
+        static_cast<const notes::MumbleLink*>(g_API->DataLink_Get(DL_MUMBLE_LINK));
+    if (!link || link->UiTick == 0) { return std::nullopt; } // not live yet
+    const notes::MumbleContext& ctx = link->ContextData;
+    if (ctx.MapId == 0) { return std::nullopt; } // no valid map (loading screen)
+    return notes::Coordinate{ctx.MapId, ctx.PlayerX, ctx.PlayerY};
+}
 
 // Per-note editable text buffers, keyed by note id. Kept out of notes-core so
 // the core stays UI-agnostic. ImGui 1.80's InputText needs a mutable char
@@ -90,6 +112,33 @@ void RenderPanel()
         if (ImGui::IsItemDeactivatedAfterEdit())
         {
             g_Store->edit(note.id, std::string(buf.data()));
+        }
+
+        // --- 003-02: optional coordinate --------------------------------------
+        // Show the stamped place (AC3) and offer capture/clear (AC1). A text-only
+        // note shows nothing but the "Stamp here" affordance (AC4).
+        if (note.coordinate)
+        {
+            ImGui::TextUnformatted(notes::format_coordinate(*note.coordinate).c_str());
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Clear")) { g_Store->clear_coordinate(note.id); }
+        }
+        // "Stamp here" captures the current position (AC1). ImGui 1.80 has no
+        // BeginDisabled, so when the link isn't live we show greyed hint text
+        // instead of an active button — the player can't stamp a bogus
+        // (0,0)/map-0 value.
+        const std::optional<notes::Coordinate> here = ReadCurrentCoordinate();
+        if (here)
+        {
+            if (ImGui::SmallButton(note.coordinate ? "Stamp here (overwrite)"
+                                                   : "Stamp here"))
+            {
+                g_Store->set_coordinate(note.id, *here);
+            }
+        }
+        else
+        {
+            ImGui::TextDisabled("Stamp here (no live position)");
         }
 
         if (ImGui::Button("Delete")) { to_delete = note.id; }

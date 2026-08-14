@@ -176,8 +176,10 @@ TEST_CASE("a versioned file with extra/unknown fields loads forward-compatibly (
         doc["schema_version"] = notes::NoteStore::kSchemaVersion;
         doc["future_top_level"] = "ignore me";
         doc["notes"] = json::array();
+        // `future_note_field` is a genuinely-unknown key (unlike `coordinate`,
+        // which is a known field as of 003-02) — it must be ignored, not rejected.
         doc["notes"].push_back(json{
-            {"id", "7"}, {"text", "kept"}, {"coordinate", {1, 2, 3}}});
+            {"id", "7"}, {"text", "kept"}, {"future_note_field", 42}});
         std::ofstream out(tmp.path, std::ios::binary);
         out << doc.dump(2);
     }
@@ -215,4 +217,156 @@ TEST_CASE("read_file returns nullopt for a missing file")
 {
     TempStorePath tmp;
     CHECK_FALSE(shared::persistence::read_file(tmp.path).has_value());
+}
+
+// === slice 003-02: optional coordinate ======================================
+// The MumbleLink read itself (AC1 capture) is the manual in-game portion and is
+// NOT asserted here; these cover the off-game surface: migration (AC2),
+// round-trip of a coordinate-bearing note (AC2 + DoD), text-only-unchanged
+// (AC4), and human-readable display (AC3).
+
+// --- AC2: a 003-01 (v1, no coordinate) file loads and migrates forward --------
+
+TEST_CASE("a v1 notes file (schema 1, no coordinate) loads and migrates forward (003-02 AC2)")
+{
+    TempStorePath tmp;
+    // Exactly what slice 003-01 wrote: schema_version 1, notes with {id, text}
+    // and no `coordinate` field at all.
+    {
+        std::ofstream out(tmp.path, std::ios::binary);
+        out << R"({"schema_version":1,"notes":[)"
+               R"({"id":"1","text":"old note"},)"
+               R"({"id":"2","text":"another"}]})";
+    }
+
+    notes::NoteStore store(tmp.path); // must not throw
+    REQUIRE(store.notes().size() == 2);
+    CHECK(store.notes()[0].text == "old note");
+    CHECK_FALSE(store.notes()[0].coordinate.has_value()); // migrated: no coord
+    CHECK_FALSE(store.notes()[1].coordinate.has_value());
+
+    // Rewriting (any mutation) upgrades the on-disk file to the current schema.
+    store.add("fresh");
+    json on_disk = json::parse(read_disk(tmp.path));
+    CHECK(on_disk["schema_version"] == notes::NoteStore::kSchemaVersion); // == 2
+    // The migrated v1 notes are preserved and still carry no coordinate key.
+    REQUIRE(on_disk["notes"].size() == 3);
+    CHECK_FALSE(on_disk["notes"][0].contains("coordinate"));
+}
+
+// --- AC2 + DoD: round-trip of a coordinate-bearing note -----------------------
+
+TEST_CASE("a coordinate-bearing note round-trips through disk unchanged (003-02 AC2)")
+{
+    TempStorePath tmp;
+    std::string id;
+    {
+        notes::NoteStore store(tmp.path);
+        id = store.add("at the vista");
+        REQUIRE(store.set_coordinate(id, notes::Coordinate{15, 12345.5f, 6789.0f}));
+    }
+    // Fresh store on the same path == a next-session reload.
+    notes::NoteStore reloaded(tmp.path);
+    REQUIRE(reloaded.notes().size() == 1);
+    const notes::Note& n = reloaded.notes()[0];
+    CHECK(n.id == id);
+    CHECK(n.text == "at the vista");
+    REQUIRE(n.coordinate.has_value());
+    CHECK(n.coordinate->map_id == 15u);
+    CHECK(n.coordinate->x == doctest::Approx(12345.5f));
+    CHECK(n.coordinate->y == doctest::Approx(6789.0f));
+}
+
+// --- AC1: stamp overwrites; clear removes; both write through -----------------
+
+TEST_CASE("set_coordinate stamps and overwrites; clear_coordinate removes (003-02 AC1)")
+{
+    TempStorePath tmp;
+    notes::NoteStore store(tmp.path);
+    const std::string id = store.add("place");
+
+    CHECK_FALSE(store.notes()[0].coordinate.has_value());
+    CHECK(store.set_coordinate(id, notes::Coordinate{18, 100.0f, 200.0f}));
+    REQUIRE(store.notes()[0].coordinate.has_value());
+    CHECK(store.notes()[0].coordinate->map_id == 18u);
+
+    // Capturing again overwrites (at most one coordinate).
+    CHECK(store.set_coordinate(id, notes::Coordinate{50, 1.0f, 2.0f}));
+    CHECK(store.notes()[0].coordinate->map_id == 50u);
+    CHECK(store.notes()[0].coordinate->x == doctest::Approx(1.0f));
+
+    // Write-through: the on-disk file reflects the stamp with no explicit flush.
+    json on_disk = json::parse(read_disk(tmp.path));
+    REQUIRE(on_disk["notes"][0].contains("coordinate"));
+    CHECK(on_disk["notes"][0]["coordinate"]["map_id"] == 50u);
+
+    // Clearing removes it, and the on-disk key goes away.
+    CHECK(store.clear_coordinate(id));
+    CHECK_FALSE(store.notes()[0].coordinate.has_value());
+    on_disk = json::parse(read_disk(tmp.path));
+    CHECK_FALSE(on_disk["notes"][0].contains("coordinate"));
+
+    // Unknown id is a no-op for both.
+    CHECK_FALSE(store.set_coordinate("no-such-id", notes::Coordinate{1, 0, 0}));
+    CHECK_FALSE(store.clear_coordinate("no-such-id"));
+}
+
+// --- AC4: a text-only note is serialized without a coordinate key -------------
+
+TEST_CASE("a note without a coordinate omits the key entirely (003-02 AC4)")
+{
+    TempStorePath tmp;
+    notes::NoteStore store(tmp.path);
+    store.add("just text");
+
+    json on_disk = json::parse(read_disk(tmp.path));
+    REQUIRE(on_disk["notes"].size() == 1);
+    CHECK(on_disk["notes"][0].contains("id"));
+    CHECK(on_disk["notes"][0].contains("text"));
+    CHECK_FALSE(on_disk["notes"][0].contains("coordinate")); // strictly optional
+}
+
+// --- AC2 tolerance: a malformed coordinate degrades to "no coordinate" --------
+
+TEST_CASE("a malformed coordinate is dropped, the rest of the note is kept (003-02 AC2)")
+{
+    TempStorePath tmp;
+    {
+        // `coordinate` present but missing its numeric fields.
+        std::ofstream out(tmp.path, std::ios::binary);
+        out << R"({"schema_version":2,"notes":[)"
+               R"({"id":"1","text":"kept","coordinate":{"map_id":15}}]})";
+    }
+    notes::NoteStore store(tmp.path);
+    REQUIRE(store.notes().size() == 1);
+    CHECK(store.notes()[0].text == "kept");
+    CHECK_FALSE(store.notes()[0].coordinate.has_value());
+}
+
+TEST_CASE("a coordinate with non-numeric fields is dropped, not coerced to map 0 (003-02 AC2)")
+{
+    TempStorePath tmp;
+    {
+        // All three keys present but wrong-typed: must degrade to "no coordinate"
+        // (nullopt), NOT a phantom {0,0,0} at map 0 — consistent with the live
+        // reader's map-0 refusal.
+        std::ofstream out(tmp.path, std::ios::binary);
+        out << R"({"schema_version":2,"notes":[)"
+               R"({"id":"1","text":"kept","coordinate":{"map_id":"x","x":null,"y":[]}}]})";
+    }
+    notes::NoteStore store(tmp.path);
+    REQUIRE(store.notes().size() == 1);
+    CHECK(store.notes()[0].text == "kept");
+    CHECK_FALSE(store.notes()[0].coordinate.has_value());
+}
+
+// --- AC3: human-readable display formatting -----------------------------------
+
+TEST_CASE("format_coordinate renders map id + rounded continent coords (003-02 AC3)")
+{
+    // Rounds to whole units (map is not sub-unit precise); em-dash separator.
+    CHECK(notes::format_coordinate(notes::Coordinate{15, 12345.5f, 6789.4f}) ==
+          "Map 15 \xE2\x80\x94 (12346, 6789)");
+    CHECK(notes::format_coordinate(notes::Coordinate{0, 0.0f, 0.0f}) ==
+          "Map 0 \xE2\x80\x94 (0, 0)");
 }
