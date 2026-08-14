@@ -7,12 +7,14 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
 
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <string>
 
 #include <nlohmann/json.hpp>
 
+#include "core/map_projection.h"
 #include "core/note_store.h"
 #include "persistence/atomic_file.h"
 
@@ -369,4 +371,126 @@ TEST_CASE("format_coordinate renders map id + rounded continent coords (003-02 A
           "Map 15 \xE2\x80\x94 (12346, 6789)");
     CHECK(notes::format_coordinate(notes::Coordinate{0, 0.0f, 0.0f}) ==
           "Map 0 \xE2\x80\x94 (0, 0)");
+}
+
+// === slice 003-04: coordinate actions =======================================
+// Pure-core coverage only. The MumbleLink/NexusLink read that supplies the
+// viewport, the ImGui draw of the marker, the GameBinds_PressAsync tier-1 map
+// open, and SetClipboardText are the manual Windows portion and are NOT asserted
+// here. Per ADR-0005 A-1 the projection's ABSOLUTE in-game fidelity is
+// unverifiable off-game, so these assert its INVARIANTS (which hold regardless
+// of the exact constant), not GW2-correctness.
+
+// A representative open-map viewport: continent (10000, 20000) sits at the
+// centre of a 1920x1080 screen, 4 continent units per pixel.
+static notes::MapViewport sample_viewport()
+{
+    notes::MapViewport vp;
+    vp.center_x = 10000.0f;
+    vp.center_y = 20000.0f;
+    vp.scale    = 4.0f;
+    vp.screen_x = 0.0f;
+    vp.screen_y = 0.0f;
+    vp.screen_w = 1920.0f;
+    vp.screen_h = 1080.0f;
+    return vp;
+}
+
+// --- AC1 (tier 2): invariant — the viewport-centre continent point projects to
+// the on-screen viewport centre --------------------------------------------
+TEST_CASE("project_to_screen: MapCenter lands on the viewport centre (003-04 AC1)")
+{
+    const notes::MapViewport vp = sample_viewport();
+    const notes::ScreenPoint p =
+        notes::project_to_screen(notes::Coordinate{15, vp.center_x, vp.center_y}, vp);
+    CHECK(p.x == doctest::Approx(vp.screen_x + vp.screen_w * 0.5f)); // 960
+    CHECK(p.y == doctest::Approx(vp.screen_y + vp.screen_h * 0.5f)); // 540
+}
+
+// --- AC1 (tier 2): invariant — linearity: doubling the continent offset from
+// the centre doubles the pixel offset from the centre ----------------------
+TEST_CASE("project_to_screen: pixel offset is linear in continent offset (003-04 AC1)")
+{
+    const notes::MapViewport vp = sample_viewport();
+    const float cx = vp.screen_x + vp.screen_w * 0.5f;
+    const float cy = vp.screen_y + vp.screen_h * 0.5f;
+
+    const notes::ScreenPoint a = notes::project_to_screen(
+        notes::Coordinate{15, vp.center_x + 400.0f, vp.center_y + 800.0f}, vp);
+    const notes::ScreenPoint b = notes::project_to_screen(
+        notes::Coordinate{15, vp.center_x + 800.0f, vp.center_y + 1600.0f}, vp);
+
+    // scale == 4 continent units/pixel: 400 units -> 100 px, 800 -> 200 px.
+    CHECK((a.x - cx) == doctest::Approx(100.0f));
+    CHECK((a.y - cy) == doctest::Approx(200.0f));
+    CHECK((b.x - cx) == doctest::Approx(200.0f)); // doubled offset
+    CHECK((b.y - cy) == doctest::Approx(400.0f));
+}
+
+// --- AC1 (tier 2): invariant — symmetry: points equidistant either side of the
+// centre land equidistant either side of the viewport centre ----------------
+TEST_CASE("project_to_screen: symmetric continent points are symmetric on screen (003-04 AC1)")
+{
+    const notes::MapViewport vp = sample_viewport();
+    const float cx = vp.screen_x + vp.screen_w * 0.5f;
+    const float cy = vp.screen_y + vp.screen_h * 0.5f;
+
+    const notes::ScreenPoint plus = notes::project_to_screen(
+        notes::Coordinate{15, vp.center_x + 600.0f, vp.center_y + 1200.0f}, vp);
+    const notes::ScreenPoint minus = notes::project_to_screen(
+        notes::Coordinate{15, vp.center_x - 600.0f, vp.center_y - 1200.0f}, vp);
+
+    CHECK((plus.x - cx) == doctest::Approx(-(minus.x - cx)));
+    CHECK((plus.y - cy) == doctest::Approx(-(minus.y - cy)));
+}
+
+// --- AC1 (tier 2): invariant — unproject is the exact inverse of project ------
+TEST_CASE("project/unproject round-trips both ways (003-04 AC1)")
+{
+    const notes::MapViewport vp = sample_viewport();
+
+    const notes::Coordinate c{15, 13333.0f, 17777.0f};
+    const notes::ScreenPoint p = notes::project_to_screen(c, vp);
+    const notes::Coordinate back = notes::unproject_from_screen(p, vp, c.map_id);
+    CHECK(back.map_id == c.map_id);
+    CHECK(back.x == doctest::Approx(c.x));
+    CHECK(back.y == doctest::Approx(c.y));
+
+    const notes::ScreenPoint q{123.0f, 456.0f};
+    const notes::ScreenPoint q_back =
+        notes::project_to_screen(notes::unproject_from_screen(q, vp, 15), vp);
+    CHECK(q_back.x == doctest::Approx(q.x));
+    CHECK(q_back.y == doctest::Approx(q.y));
+}
+
+// --- AC1 (tier 2): a zero/degenerate scale must not divide-by-zero (NaN/inf) --
+TEST_CASE("project_to_screen: a degenerate zero scale is guarded (003-04 AC1)")
+{
+    notes::MapViewport vp = sample_viewport();
+    vp.scale = 0.0f;
+    const notes::ScreenPoint p =
+        notes::project_to_screen(notes::Coordinate{15, 12345.0f, 6789.0f}, vp);
+    CHECK(std::isfinite(p.x));
+    CHECK(std::isfinite(p.y));
+}
+
+// --- AC1 (tier 2 gate): the map-open UiState bit is read correctly -------------
+TEST_CASE("is_map_open reads the IsMapOpen bit of UiState (003-04 AC1)")
+{
+    CHECK(notes::is_map_open(0x0001u));            // bit 0 set
+    CHECK(notes::is_map_open(0x00FFu));            // bit 0 set among others
+    CHECK_FALSE(notes::is_map_open(0x0000u));      // nothing set
+    CHECK_FALSE(notes::is_map_open(0x00FEu));      // everything but bit 0
+}
+
+// --- AC2/AC4: the share/clipboard text reuses format_coordinate ---------------
+// AC2 says "share to chat" copies a formatted coordinate string; the glue does
+// SetClipboardText(format_coordinate(...).c_str()). No distinct paste form is
+// introduced (no duplicated format logic), so the share text IS the tested
+// format string — asserted here to pin the share contract to that one formatter.
+TEST_CASE("the share-to-chat / clipboard text is the formatted coordinate (003-04 AC2)")
+{
+    const notes::Coordinate c{1155, 49415.0f, 32118.0f};
+    // Matches the ADR-0005 in-game sample "Map 1155 — (49415, 32118)".
+    CHECK(notes::format_coordinate(c) == "Map 1155 \xE2\x80\x94 (49415, 32118)");
 }
