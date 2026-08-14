@@ -1,9 +1,8 @@
 ---
-status: RECONCILED
+status: DONE
 dependencies: [003-01]
 last_verified: 2026-08-13
 frame_review: true
-claimed_by: claude/notes-coordinates-003-02
 ---
 
 <!-- jig grounding (spec 064-02 / ADR-0020): ground factual claims about runnable
