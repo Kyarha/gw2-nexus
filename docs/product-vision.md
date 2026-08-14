@@ -221,5 +221,9 @@ ArenaNet's third-party addon and content policy and has not yet been checked
 - Audience: this player only, or a broader PvE crafter / collector audience
   (currently leaning broader).
 - How the GW2 API key is stored on disk (plain file vs. encrypted).
-- Whether sharing a coordinate into chat (UC-7) is feasible through the supported
-  API — pasting a waypoint / chat-link is not confirmed and needs a spike.
+- ~~Whether sharing a coordinate into chat (UC-7) is feasible through the supported
+  API — pasting a waypoint / chat-link is not confirmed and needs a spike.~~
+  **RESOLVED 2026-08-13** (spike 003-03 / [ADR-0005](decisions/adr-0005-coordinate-action-mechanism.md)):
+  no supported chat-send API and no clickable link for an arbitrary point — share
+  is **clipboard copy** for the player to paste; a clickable nearest-waypoint link
+  is deferred to the UC-8 REST fast-follow.

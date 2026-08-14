@@ -19,7 +19,7 @@
 | [002-build-skeleton](002-build-skeleton/spec.md) | 002-01 — walking-skeleton | **DONE** |  |
 | [003-notes-mvp](003-notes-mvp/spec.md) | 003-01 — note-persist | **DONE** |  |
 | [003-notes-mvp](003-notes-mvp/spec.md) | 003-02 — coordinates | **DONE** |  |
-| [003-notes-mvp](003-notes-mvp/spec.md) | 🔬 003-03 — spike: map/chat action feasibility | DRAFT |  |
+| [003-notes-mvp](003-notes-mvp/spec.md) | 🔬 003-03 — spike: map/chat action feasibility | **DONE** |  |
 | [003-notes-mvp](003-notes-mvp/spec.md) | 003-04 — coordinate actions | DRAFT |  |
 | [003-notes-mvp](003-notes-mvp/spec.md) | 003-05 — context-aware notes (optional MVP convenience) | DRAFT |  |
 | [003-notes-mvp](003-notes-mvp/spec.md) | 003-06 — native-look theme layer | DRAFT |  |

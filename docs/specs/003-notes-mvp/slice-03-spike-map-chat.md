@@ -1,10 +1,9 @@
 ---
-status: IN_PROGRESS
+status: DONE
 kind: spike
 dependencies: [003-02]
 last_verified:
 frame_review: true
-claimed_by: claude/notes-spike-003-03
 ---
 
 <!-- jig grounding (spec 064-02 / ADR-0020): a spike's job is to REPLACE
@@ -198,3 +197,45 @@ waypoint-link (UC-8). 003-04's acceptance criteria were finalized from it.
 slice — it delivers a *decision*, not shipped UI. It is nested in this spec (never
 a standalone `docs/spikes/` artifact) and is bounded; it exists because the
 downstream design genuinely cannot be chosen without it.
+
+### Deviation log (after reconciliation)
+
+- **Ran in parallel with 003-02 (DoR relaxed).** The spike opened while 003-02 was
+  still IN_PROGRESS; the investigation only needed the *settled coordinate space*
+  (continent coords), not the finished capture code. 003-02 reached DONE on
+  `origin/main` (c22664c) before this spike closed, satisfying the dependency.
+- **Isolated onto its own worktree/branch mid-flight.** The spike began in the
+  shared 003-02 working tree; when that proved live-mutated by the parallel session
+  (the slice frontmatter was reverted under us), the work was moved to an isolated
+  worktree (`claude/notes-spike-003-03`) off `origin/main`. No 003-02 files were
+  touched.
+- **First-pass over-claim corrected (F7).** The initial finding wrongly implied the
+  only in-scope show-on-map was "open-map-focus-player + clipboard." An
+  owner-prompted deeper probe (web survey + in-game screenshots) established the
+  in-bounds overlay-marker technique; the findings and ADR-0005 reflect the
+  corrected menu.
+- **Frame-critique refinements folded into ADR-0005 before accept.** A-1 was widened
+  to name both projection inputs; the "vision explicitly bars input injection"
+  overstatement was corrected against `product-vision.md:118–119`.
+- **Review model.** As a research spike with no code deliverable, the applicable
+  review is the ADR frame-critique (passed, evidence at
+  `docs/decisions/reviews/adr-0005-frame-critique.md`), not the compliance/craft
+  passes designed for implementation slices.
+
+### Reconciliation sweep
+
+- **`docs/decisions/` — updated.** ADR-0005 created + Accepted; index regenerated.
+- **`docs/refinement-todo.md` — updated.** "Share-coordinate-to-chat (UC-7)
+  feasibility" struck through, marked RESOLVED by ADR-0005.
+- **`docs/product-vision.md` — updated.** The UC-7-feasibility open question marked
+  RESOLVED with a pointer to ADR-0005 (original text preserved, struck through).
+- **`slice-04-coordinate-actions.md` — updated.** ACs finalized to the decided
+  tiers + clipboard fallback; A-1 carried forward as its residual risk.
+- **`docs/architecture.md` — no-op.** No module boundary or public contract changed
+  by a research spike; the mechanism decision lives in ADR-0005, which architecture
+  can reference when 003-04 implements.
+- **`docs/inbox.md` / `docs/memory/glossary.md` — no-op.** No new parked ideas or
+  domain terms introduced by the spike (session memory captured separately).
+- **Status board — deferred to landing.** `workflow.py status-board` to be run at
+  integration (board is derived; regenerating now on a branch off `origin/main`
+  would only churn the README before merge).
