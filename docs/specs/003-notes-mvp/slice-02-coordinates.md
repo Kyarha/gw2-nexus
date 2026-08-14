@@ -1,8 +1,9 @@
 ---
-status: DRAFT
+status: IN_PROGRESS
 dependencies: [003-01]
 last_verified:
 frame_review: true
+claimed_by: main
 ---
 
 <!-- jig grounding (spec 064-02 / ADR-0020): ground factual claims about runnable
@@ -68,8 +69,37 @@ the 003-04 actions act on.
 
 ### Deviation log (after reconciliation)
 
-_TBD at implementation._
+_Implementation notes (in progress; reconciliation pending in-game verification)._
+
+- **AC5 — coordinate space resolved: GW2 continent coordinates.** A note's
+  coordinate is stored as `{ map_id: uint32, x: float, y: float }` — the 2D map
+  space the in-game world map and `/v2/maps` share — captured from the MumbleLink
+  context (`MumbleContext.MapId` + `PlayerX`/`PlayerY`). Rejected alternative:
+  `AvatarPosition[3]` (3D, metres, world space) — precise but only needed for
+  world-pinned notes (UC-11, out of scope); continent space is what the 003-04
+  actions consume. Recorded in [architecture.md § Data model](../../architecture.md).
+- **Grounding / A1 status.** The MumbleContext field offsets and the
+  continent-space claim come from the **public GW2 MumbleLink spec**, transcribed
+  in `notes/src/mumble_link.h` (the vendored Nexus SDK ships only `Nexus.h`, no
+  Mumble struct). This is **runtime-unverified until read in-game** — the manual
+  DoD portion. The addon never blocks on the link and refuses to stamp a
+  non-live read (`UiTick == 0` or `MapId == 0`).
+- **Record shape / migration.** `kSchemaVersion` bumped 1 → 2; `Note` gains
+  `std::optional<Coordinate>`. A v1 file (no `coordinate` key) migrates forward
+  untouched and is rewritten at v2 on the next mutation. Text-only notes omit the
+  key entirely (AC4). A malformed `coordinate` degrades to "no coordinate" rather
+  than rejecting the note, mirroring 003-01's keep-the-rest tolerance.
+- **UI (ImGui 1.80 constraint).** `BeginDisabled`/`EndDisabled` do **not** exist
+  in the pinned ImGui 1.80 (added 1.85); the "Stamp here" affordance renders as
+  greyed `TextDisabled` hint text when no live position is available instead of a
+  disabled button.
+- **Off-game coverage (DoD).** Migration, coordinate round-trip, stamp/overwrite/
+  clear, text-only-unchanged, and display formatting are unit-tested in
+  `notes/tests/test_note_store.cpp` (doctest, 15 cases / 77 assertions green);
+  a mutation (removing the stamp) was shown to turn the new tests red. The
+  MumbleLink read + in-game landmark verification + screenshot remain the manual
+  Windows portion (DoD item 1) — **still open**.
 
 ### Reconciliation sweep
 
-_TBD at reconciliation._
+_TBD at reconciliation (after in-game verification closes the DoD)._

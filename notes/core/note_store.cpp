@@ -24,6 +24,26 @@ unsigned long long numeric_id(const std::string& id)
     return std::strtoull(id.c_str(), nullptr, 10);
 }
 
+// Read a note's optional coordinate (003-02). A v1 record has no `coordinate`
+// key -> nullopt (migrates forward untouched). A malformed `coordinate` (not an
+// object, or missing its numeric fields) is treated as "no coordinate" rather
+// than rejecting the whole note, mirroring load()'s keep-the-rest tolerance.
+std::optional<Coordinate> parse_coordinate(const json& item)
+{
+    if (!item.contains("coordinate")) { return std::nullopt; }
+    const auto& c = item["coordinate"];
+    if (!c.is_object() || !c.contains("map_id") || !c.contains("x") ||
+        !c.contains("y"))
+    {
+        return std::nullopt;
+    }
+    Coordinate out;
+    out.map_id = c["map_id"].is_number() ? c.value("map_id", 0u) : 0u;
+    out.x      = c["x"].is_number() ? c.value("x", 0.0f) : 0.0f;
+    out.y      = c["y"].is_number() ? c.value("y", 0.0f) : 0.0f;
+    return out;
+}
+
 } // namespace
 
 NoteStore::NoteStore(std::filesystem::path path)
@@ -49,7 +69,10 @@ void NoteStore::load()
     }
 
     // Forward-compatible read: unknown top-level fields are ignored; missing
-    // fields fall back to defaults so an older/newer file still loads (AC4).
+    // fields fall back to defaults so an older/newer file still loads (003-01 AC4).
+    // Migration is implicit-and-additive (003-02 AC2): a v1 record has no
+    // `coordinate` key, so `coordinate` stays nullopt and the note migrates
+    // forward untouched; the file is rewritten at schema v2 on the next mutation.
     if (doc.contains("notes") && doc["notes"].is_array())
     {
         for (const auto& item : doc["notes"])
@@ -59,6 +82,7 @@ void NoteStore::load()
             n.id   = item.value("id", std::string{});
             n.text = item.value("text", std::string{});
             if (n.id.empty()) { continue; } // skip malformed entries, keep the rest
+            n.coordinate = parse_coordinate(item);
             next_id_ = std::max(next_id_, numeric_id(n.id) + 1);
             notes_.push_back(std::move(n));
         }
@@ -72,7 +96,14 @@ std::string NoteStore::serialize() const
     json arr = json::array();
     for (const auto& n : notes_)
     {
-        arr.push_back(json{{"id", n.id}, {"text", n.text}});
+        json jn{{"id", n.id}, {"text", n.text}};
+        if (n.coordinate) // optional: text-only notes omit the key entirely (AC4)
+        {
+            jn["coordinate"] = json{{"map_id", n.coordinate->map_id},
+                                    {"x", n.coordinate->x},
+                                    {"y", n.coordinate->y}};
+        }
+        arr.push_back(std::move(jn));
     }
     doc["notes"] = std::move(arr);
     return doc.dump(2);
@@ -115,6 +146,26 @@ bool NoteStore::remove(const std::string& id)
                            [&](const Note& n) { return n.id == id; });
     if (it == notes_.end()) { return false; }
     notes_.erase(it);
+    persist(); // write-through (AC3)
+    return true;
+}
+
+bool NoteStore::set_coordinate(const std::string& id, Coordinate coord)
+{
+    auto it = std::find_if(notes_.begin(), notes_.end(),
+                           [&](const Note& n) { return n.id == id; });
+    if (it == notes_.end()) { return false; }
+    it->coordinate = coord; // at most one; overwrites any existing (003-02 AC1)
+    persist();              // write-through (AC3)
+    return true;
+}
+
+bool NoteStore::clear_coordinate(const std::string& id)
+{
+    auto it = std::find_if(notes_.begin(), notes_.end(),
+                           [&](const Note& n) { return n.id == id; });
+    if (it == notes_.end()) { return false; }
+    it->coordinate.reset();
     persist(); // write-through (AC3)
     return true;
 }

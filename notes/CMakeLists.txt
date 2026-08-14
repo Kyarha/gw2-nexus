@@ -8,6 +8,7 @@
 
 # --- notes-core: platform-independent, unit-tested -----------------------------
 add_library(notes-core STATIC
+  core/note.cpp
   core/note_store.cpp
 )
 target_include_directories(notes-core PUBLIC .)

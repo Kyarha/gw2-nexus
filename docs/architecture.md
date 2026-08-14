@@ -114,6 +114,21 @@ addon-to-addon coupling. Interfaces firm up as the first addon (Notes) is built.
 
 - **Notes** — per-account JSON in the Notes addon folder: note text, optional
   coordinates, optional map / character tags, and world-pin positions.
+  - **Coordinate space (resolved, spec 003-02 AC5).** A note's optional
+    coordinate is stored as **GW2 continent coordinates** — `{ map_id: uint32,
+    x: float, y: float }` — the 2D map space the in-game world map and the
+    `/v2/maps` REST API share, captured from the MumbleLink context
+    (`MumbleContext.MapId` + `PlayerX`/`PlayerY`). This is the space the 003-04
+    actions (show-on-map / share-to-chat) consume. The 3D `AvatarPosition`
+    (metres, world space) is deliberately **not** stored — that precision is
+    only needed for world-pinned notes (UC-11, out of scope for spec 003). The
+    persisted record is versioned: schema v1 (003-01) was `{id, text}`; schema
+    v2 (003-02) adds the optional `coordinate`, and a v1 file migrates forward
+    (the field is simply absent → no coordinate). *Assumption (A1, runtime-
+    unverified until read in-game): the MumbleContext field offsets and that
+    `PlayerX/PlayerY` are continent-space come from the public GW2 MumbleLink
+    spec, transcribed in `notes/src/mumble_link.h`; confirmed in-game per the
+    003-02 DoD.*
 - **Settings** — a per-addon `settings.json`.
 - **GW2 API key** — stored locally on disk; sent only to the official API, never
   elsewhere (see product-vision.md, "Private by default").
