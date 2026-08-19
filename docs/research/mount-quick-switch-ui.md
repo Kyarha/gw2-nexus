@@ -1,21 +1,21 @@
 > Status: Reference (research finding + idea) · Last verified: 2026-08-19
 >
-> Feasibility research for a **mount quick-switch UI** — a Blish-HUD-style mount
-> radial for Nexus: hold a key, flick the mouse to a mount, release to summon.
+> Feasibility research for a **mount quick-switch UI** — a mount radial for
+> Nexus: hold a key, flick the mouse to a mount, release to summon.
 > This file records the concept, why it's feasible on sanctioned APIs, the design
 > shape, the one genuine unknown (mouse passthrough), and sources. Not yet a spec;
 > parked in [inbox.md](../inbox.md) for triage.
 
-# Mount quick-switch UI (Blish-style radial) — feasibility
+# Mount quick-switch UI (hold-to-open radial) — feasibility
 
 ## The idea
 
 Guild Wars 2 lets you bind each mount to a direct-select key ("Mount Ability
-Mount" binds), but nine mounts don't fit nine comfortable keys. Blish HUD solves
-this with a **radial**: hold one key, the mouse-anchored wheel of mount icons
-appears, move to a sector, release to summon that mount. The ask: can Nexus do
-the same? **Yes — and more directly than Blish, because Nexus exposes the game's
-own mount keybinds as callable functions.**
+Mount" binds), but nine mounts don't fit nine comfortable keys. A **radial**
+solves this: hold one key, a mouse-anchored wheel of mount icons appears, move to
+a sector, release to summon that mount. The ask: can Nexus do this? **Yes — and
+cleanly, because Nexus exposes the game's own mount keybinds as callable
+functions.**
 
 ## Why it's feasible
 
@@ -66,8 +66,8 @@ feature and resolved in the project's favour:
 
 A manual-select radial that fires **one** `GameBinds_InvokeAsync` per release is
 the same shape as an action the project already accepted, and the same category
-ArenaNet tolerates for Blish's radial. A mount-radial ADR would mostly cite this
-precedent. What would cross the line: auto-mounting on triggers, macro sequences,
+ArenaNet tolerates for a manually triggered mount radial. A mount-radial ADR
+would mostly cite this precedent. What would cross the line: auto-mounting on triggers, macro sequences,
 or `WndProc_SendToGameOnly`.
 
 ## Design shape
@@ -87,10 +87,10 @@ Smart touches enabled by the data we already have:
 - **`MountIndex`** → highlight the mount you're already on; flicking to it can
   dismount instead of re-summon.
 - **`GB_SpumoniToggle`** → center-release (no sector selected) = deploy your
-  last mount, à la Blish's "no selection = default."
+  last mount (a "no selection = default" affordance).
 - **`GameBinds_IsBound`** → grey out mounts the player hasn't keybound (the
   invoke fires the *user's* configured bind; if it's unbound, nothing happens —
-  same onboarding gotcha Blish has, so warn rather than silently no-op).
+  an onboarding gotcha, so warn rather than silently no-op).
 - **`UiState`** combat bit → optionally suppress the radial in combat.
 
 Structure would mirror `notes/`: a new `mount/` addon module with a unique
@@ -108,8 +108,9 @@ machinery — Nexus doesn't broker API keys). MVP = show all, filter by `IsBound
 
 Everything above is mechanical. The single thing that can't be settled on paper
 is **input feel**: while you hold the key and move the mouse to pick a sector,
-does the game *also* swing the camera? Blish suppresses that. Whether (and how)
-Nexus lets an addon consume mouse movement vs. what leaks to the game needs an
+does the game *also* swing the camera? A polished radial must suppress that.
+Whether (and how) Nexus lets an addon consume mouse movement vs. what leaks to
+the game needs an
 **in-game spike** — it decides whether the radial feels crisp or fights the
 camera. De-risk this before committing to the feature; the relevant surface is
 Nexus's `WndProc_Register`/`WndProc` filtering.
@@ -119,7 +120,7 @@ Nexus's `WndProc_Register`/`WndProc` filtering.
 - Mouse-passthrough spike is the gating unknown (above).
 - Mount icons/art must come from somewhere (bundled, or the wiki render service)
   to hit the project's native-look bar — cosmetic but it's what makes it read as
-  Blish rather than a debug menu. See [gw2-asset-reuse-policy.md](gw2-asset-reuse-policy.md).
+  a polished overlay rather than a debug menu. See [gw2-asset-reuse-policy.md](gw2-asset-reuse-policy.md).
 - `sdk/` and `vendor/imgui/` submodules are **not checked out** locally
   (`git submodule status` shows `-`); `git submodule update --init` is needed
   before any build. API facts here were confirmed against the pinned `Nexus.h`
@@ -132,5 +133,4 @@ Nexus's `WndProc_Register`/`WndProc` filtering.
 - In-repo precedent: [decisions/adr-0005-coordinate-action-mechanism.md](../decisions/adr-0005-coordinate-action-mechanism.md),
   [specs/003-notes-mvp/slice-03-spike-map-chat.md](../specs/003-notes-mvp/slice-03-spike-map-chat.md)
 - In-repo addon template: `notes/src/entry.cpp`, `notes/src/mumble_link.h`
-- Blish HUD (reference implementation of the radial): https://blishhud.com
 - Nexus framework + policy stance: https://raidcore.gg/gw2/nexus
