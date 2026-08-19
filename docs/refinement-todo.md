@@ -81,6 +81,8 @@
 **Deferred:** Plain file on disk vs. encrypted at rest.
 **Resolution trigger:** First spec that reads the GW2 API (the "clickable game references" or tracker work).
 
-### Decision: Share-coordinate-to-chat (UC-7) feasibility
-**Deferred:** Pasting a waypoint / chat-link into game chat is not confirmed through the supported Nexus API; needs a spike.
+### ~~Decision: Share-coordinate-to-chat (UC-7) feasibility~~ — RESOLVED 2026-08-13
+~~**Deferred:** Pasting a waypoint / chat-link into game chat is not confirmed through the supported Nexus API; needs a spike.~~
 **Resolution trigger:** First Notes spec that implements coordinate sharing. Spike before committing UC-7.
+**Resolved by:** [ADR-0005: Coordinate action mechanism: overlay marker + clipboard, not map-control or chat-injection](decisions/adr-0005-coordinate-action-mechanism.md).
+
