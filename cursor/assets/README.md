@@ -49,13 +49,18 @@ without extra per-layer opacity.
 
 ## Regenerate (repeatable)
 
-The PNGs are rendered from `./svg/*.svg` with the resvg engine at 256×256:
+The PNGs are rendered from `./svg/*.svg` with the resvg engine at 256×256, then
+embedded into the DLL as C byte arrays (the addon loads them via
+`Textures_GetOrCreateFromMemory` — a `.rc`/`FindResource` path was tried first
+but `FindResource` by numeric ID failed at runtime, so the bytes are compiled in
+directly):
 
 ```bash
 cd cursor/assets
 npm install @resvg/resvg-js
-node rasterize.mjs
+node rasterize.mjs            # svg/*.svg -> presets/*.png (256x256)
+python3 gen_texture_data.py  # presets/*.png -> preset_textures_data.h (byte arrays)
 ```
 
-Every `svg/<name>.svg` renders to `presets/<name>.png`. Editing a mask and
-re-running is the whole pipeline; `node_modules` is not committed.
+Editing a mask means re-running both steps. `node_modules` is not committed;
+`preset_textures_data.h` is (it's the source of truth the DLL compiles in).

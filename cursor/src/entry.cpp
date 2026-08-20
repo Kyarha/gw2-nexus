@@ -9,9 +9,9 @@
 // depend on Unload; see cursor/core/cursor_store.h and AC6).
 //
 // Presets are drawn from layered white/alpha mask textures (004-02 AC7): a
-// tintable outline layer + a tintable colour layer, embedded as RCDATA resources
-// (assets/resources.rc) and loaded via Textures_GetOrCreateFromResource. Each
-// layer is tinted at draw time with AddImage, so one PNG serves any user colour.
+// tintable outline layer + a tintable colour layer, embedded as C byte arrays
+// (assets/preset_textures_data.h) and loaded via Textures_GetOrCreateFromMemory.
+// Each layer is tinted at draw time with AddImage, so one PNG serves any colour.
 // Draw order is outline UNDER colour (the outline reads as a dark halo behind the
 // brighter core). If a texture is not ready yet, the frame falls back to the
 // 004-01 procedural ring so the marker never blanks.
@@ -25,7 +25,6 @@
 
 #include <cstdint>
 #include <cstdio>
-#include <cstring>
 #include <filesystem>
 
 #include "imgui.h"
@@ -33,7 +32,7 @@
 
 #include "core/cursor_store.h"
 #include "core/marker.h"
-#include "../assets/resource_ids.h"
+#include "../assets/preset_textures_data.h"
 
 namespace {
 
@@ -55,69 +54,57 @@ constexpr const char* kIconHoverId = "ICON_NEXUS_HOVER";
 
 AddonDefinition_t g_AddonDef{};
 AddonAPI_t*        g_API    = nullptr;
-HMODULE            g_Module = nullptr;
 cursor::CursorStore* g_Store = nullptr;
 bool               g_PanelOpen = false;
 
 // --- preset layer texture table ----------------------------------------------
 
 // One entry per preset (indexed by (int)cursor::Preset): the Nexus texture
-// identifier + embedded resource ID for each of the two layers.
+// identifier + embedded PNG bytes (from preset_textures_data.h) for each layer.
+// Loaded via Textures_GetOrCreateFromMemory — no Windows resource lookup.
 struct LayerTex {
-    const char* id;
-    std::uint32_t res;
+    const char*          id;
+    const unsigned char* data;
+    unsigned int         size;
 };
 struct PresetTex {
     LayerTex outline;
     LayerTex colour;
 };
-constexpr PresetTex kPresetTex[] = {
-    { {"TEX_CURSOR_PULSE_RING_OUTLINE",       IDR_CURSOR_PULSE_RING_OUTLINE},
-      {"TEX_CURSOR_PULSE_RING_COLOUR",        IDR_CURSOR_PULSE_RING_COLOUR} },
-    { {"TEX_CURSOR_CORNER_RETICLE_OUTLINE",   IDR_CURSOR_CORNER_RETICLE_OUTLINE},
-      {"TEX_CURSOR_CORNER_RETICLE_COLOUR",    IDR_CURSOR_CORNER_RETICLE_COLOUR} },
-    { {"TEX_CURSOR_BEACON_CROSSHAIR_OUTLINE", IDR_CURSOR_BEACON_CROSSHAIR_OUTLINE},
-      {"TEX_CURSOR_BEACON_CROSSHAIR_COLOUR",  IDR_CURSOR_BEACON_CROSSHAIR_COLOUR} },
-    { {"TEX_CURSOR_RADAR_DASH_OUTLINE",       IDR_CURSOR_RADAR_DASH_OUTLINE},
-      {"TEX_CURSOR_RADAR_DASH_COLOUR",        IDR_CURSOR_RADAR_DASH_COLOUR} },
-    { {"TEX_CURSOR_SOFT_HALO_OUTLINE",        IDR_CURSOR_SOFT_HALO_OUTLINE},
-      {"TEX_CURSOR_SOFT_HALO_COLOUR",         IDR_CURSOR_SOFT_HALO_COLOUR} },
+const PresetTex kPresetTex[] = {
+    { {"TEX_CURSOR_PULSE_RING_OUTLINE",       cursor_art::kPulseRingOutline,       cursor_art::kPulseRingOutline_len},
+      {"TEX_CURSOR_PULSE_RING_COLOUR",        cursor_art::kPulseRingColour,        cursor_art::kPulseRingColour_len} },
+    { {"TEX_CURSOR_CORNER_RETICLE_OUTLINE",   cursor_art::kCornerReticleOutline,   cursor_art::kCornerReticleOutline_len},
+      {"TEX_CURSOR_CORNER_RETICLE_COLOUR",    cursor_art::kCornerReticleColour,    cursor_art::kCornerReticleColour_len} },
+    { {"TEX_CURSOR_BEACON_CROSSHAIR_OUTLINE", cursor_art::kBeaconCrosshairOutline, cursor_art::kBeaconCrosshairOutline_len},
+      {"TEX_CURSOR_BEACON_CROSSHAIR_COLOUR",  cursor_art::kBeaconCrosshairColour,  cursor_art::kBeaconCrosshairColour_len} },
+    { {"TEX_CURSOR_RADAR_DASH_OUTLINE",       cursor_art::kRadarDashOutline,       cursor_art::kRadarDashOutline_len},
+      {"TEX_CURSOR_RADAR_DASH_COLOUR",        cursor_art::kRadarDashColour,        cursor_art::kRadarDashColour_len} },
+    { {"TEX_CURSOR_SOFT_HALO_OUTLINE",        cursor_art::kSoftHaloOutline,        cursor_art::kSoftHaloOutline_len},
+      {"TEX_CURSOR_SOFT_HALO_COLOUR",         cursor_art::kSoftHaloColour,         cursor_art::kSoftHaloColour_len} },
 };
 
-// Cached preset textures, filled by the async receive callback (the documented
-// load path) and, as a fallback, lazily by GetOrCreateFromResource. Indexed by
-// (int)Preset.
+// Cached preset textures, filled lazily by Textures_GetOrCreateFromMemory from
+// the embedded PNG bytes. Indexed by (int)Preset.
 struct PresetTexCache {
     Texture_t* outline = nullptr;
     Texture_t* colour  = nullptr;
 };
 PresetTexCache g_Tex[5];
 
-// Receive callback for Textures_LoadFromResource: match the identifier back to
-// its preset/layer slot and cache the pointer. Nexus keeps ownership; we only
-// hold the pointer and read ->Resource at draw time.
-void OnTextureReceived(const char* aIdentifier, Texture_t* aTexture)
-{
-    if (!aIdentifier) { return; }
-    for (int i = 0; i < 5; ++i)
-    {
-        if (std::strcmp(aIdentifier, kPresetTex[i].outline.id) == 0) { g_Tex[i].outline = aTexture; return; }
-        if (std::strcmp(aIdentifier, kPresetTex[i].colour.id)  == 0) { g_Tex[i].colour  = aTexture; return; }
-    }
-}
-
-// Resolve a preset layer's texture: prefer the cache (populated by the async
-// loader), else try GetOrCreateFromResource and cache it. Returns nullptr (or a
-// texture whose Resource is not ready yet) — the caller falls back to the
-// procedural ring for that frame.
+// Resolve a preset layer's texture: cache once, else decode the embedded PNG
+// bytes via Textures_GetOrCreateFromMemory (no resource lookup / module handle).
+// Returns nullptr (or a texture whose Resource is not ready yet) — the caller
+// falls back to the procedural ring for that frame.
 Texture_t* ResolveTex(int idx, bool colour_layer)
 {
     Texture_t*& slot = colour_layer ? g_Tex[idx].colour : g_Tex[idx].outline;
     if (slot && slot->Resource) { return slot; }
     const LayerTex& lt = colour_layer ? kPresetTex[idx].colour : kPresetTex[idx].outline;
-    if (g_API && g_API->Textures_GetOrCreateFromResource)
+    if (g_API && g_API->Textures_GetOrCreateFromMemory)
     {
-        if (Texture_t* t = g_API->Textures_GetOrCreateFromResource(lt.id, lt.res, g_Module))
+        if (Texture_t* t = g_API->Textures_GetOrCreateFromMemory(
+                lt.id, const_cast<unsigned char*>(lt.data), lt.size))
         {
             slot = t;
         }
@@ -437,28 +424,12 @@ void AddonLoad(AddonAPI_t* aApi)
                                       : std::filesystem::path("cursor");
     g_Store = new cursor::CursorStore(dir / "cursor.json");
 
-    // Kick the async load of every preset layer texture from the embedded
-    // resources; OnTextureReceived caches each Texture_t* when it is ready. This
-    // is the documented load path (GetOrCreateFromResource is kept as a
-    // per-frame fallback in ResolveTex).
-    if (aApi->Textures_LoadFromResource)
-    {
-        for (int i = 0; i < 5; ++i)
-        {
-            aApi->Textures_LoadFromResource(kPresetTex[i].outline.id,
-                                            kPresetTex[i].outline.res, g_Module, OnTextureReceived);
-            aApi->Textures_LoadFromResource(kPresetTex[i].colour.id,
-                                            kPresetTex[i].colour.res, g_Module, OnTextureReceived);
-        }
-    }
     if (aApi->Log)
     {
-        char msg[192];
+        char msg[160];
         std::snprintf(msg, sizeof(msg),
-            "cursor: texture APIs load=%p getorcreate=%p module=%p",
-            reinterpret_cast<void*>(aApi->Textures_LoadFromResource),
-            reinterpret_cast<void*>(aApi->Textures_GetOrCreateFromResource),
-            reinterpret_cast<void*>(g_Module));
+            "cursor: Textures_GetOrCreateFromMemory=%p (loading %u preset layers from memory)",
+            reinterpret_cast<void*>(aApi->Textures_GetOrCreateFromMemory), 10u);
         aApi->Log(LOGL_INFO, "gw2-nexus", msg);
     }
 
@@ -519,7 +490,6 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ulReasonForCall, LPVOID /*lpReserve
     switch (ulReasonForCall)
     {
         case DLL_PROCESS_ATTACH:
-            g_Module = hModule; // needed to load embedded texture resources
             DisableThreadLibraryCalls(hModule);
             break;
         case DLL_PROCESS_DETACH: break;
