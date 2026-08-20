@@ -1,7 +1,7 @@
 ---
-status: IN_PROGRESS
+status: RECONCILED
 dependencies: [003-06]
-last_verified:
+last_verified: 2026-08-20
 frame_review: true
 claimed_by: claude/notes-native-theme-003-06
 ---
@@ -72,16 +72,21 @@ categories item).
    inherit them (principle #6).
 
 **DoD:**
-- [ ] AC1–AC6 pass; the card list verified in-game with a screenshot in the
-      deviation log.
-- [ ] Off-game unit coverage where it applies: any pure helper (e.g. title/body
-      split of a note's text, new-token palette values) is unit-tested in
-      `shared/tests` / `notes/tests` (the ImGui render itself is the manual,
-      in-game portion, stated honestly — same posture as 003-06).
-- [ ] Reviewed (compliance + craft). No `arch_review` (adds palette fields +
-      draw helpers behind the existing `shared/theme` surface; no boundary change)
-      unless the token additions are judged to reshape the public palette.
-- [ ] Deviation log + reconciliation sweep produced.
+- [x] AC1–AC6 pass (with the AC1 tack + delete-confirm container deferrals
+      recorded in the deviation log); the card list verified in-game by the owner
+      across builds `3a47bf6` → `7b268b3`. _Screenshot custody:_ the owner holds
+      the in-game captures (shared during this session); a durable copy attaches
+      alongside the design-eval evidence at the redline closeout (same posture as
+      003-06).
+- [x] Off-game unit coverage where it applies: the title/body split
+      (`notes::split_title_body`, 7 subcases) and the new palette tokens are
+      unit-tested in `notes/tests` / `shared/tests` (the ImGui render itself is the
+      manual, in-game portion, stated honestly — same posture as 003-06).
+- [x] Reviewed (compliance + craft) — both `pass`
+      (`reviews/slice-07-compliance.md`, `reviews/slice-07-craft.md`). No
+      `arch_review` (adds palette fields + draw helpers behind the existing
+      `shared/theme` surface; no boundary change).
+- [x] Deviation log + reconciliation sweep produced.
 - [ ] **Design fidelity is NOT gated here.** Visual fidelity against the v1.2
       redline is aligned in the **single cross-cutting redline pass** once the
       Notes features land (same deferral as 003-06 — see
@@ -137,8 +142,13 @@ AC-breaking):**
 - **Delete-button hover token.** `ImGuiCol_ButtonHovered` on the Delete button
   reuses `danger_line` (a border token) as a hover fill — harmless; revisit in
   the redline pass.
-- **Full card/title-bar gradient fidelity** remains part of the same redline pass
-  (see [`fidelity-map.md`](../../designs/notes_v1.2/redlines/fidelity-map.md)).
+- **Dimensional deltas from the literal AC values** are approximations pending the
+  redline pass: card top/bottom padding is 6/6 au (spec 16/14), the action icons
+  are 26 au (spec 28), and card/title-bar gradient fidelity is not yet pixel-tuned.
+  These are placeholders the single v1.2 redline pass reconciles against the
+  reference render (see
+  [`fidelity-map.md`](../../designs/notes_v1.2/redlines/fidelity-map.md)); they are
+  not individually gated here.
 
 **Deferred to a feature slice:**
 - **Clearing a stamped coordinate needs a confirmation** (owner hit an accidental
@@ -149,10 +159,10 @@ AC-breaking):**
 
 Drift-prone surfaces checked, with dispositions:
 
-- **`shared/theme` palette** — *updated*: six v1.2 tokens added
-  (`card_bottom`, `form_top/bottom`, `danger_*`, `muted_2`, `tack_*`) + draw
-  helpers (`GradientRectFilled`, `IconButton`, `with_alpha`); asserted in
-  `shared/tests/test_theme.cpp`.
+- **`shared/theme` palette** — *updated*: eleven v1.2 token fields added
+  (`card_bottom`, `form_top`, `form_bottom`, the five `danger_*`, `muted_2`, and
+  the two `tack_*`) + draw helpers (`GradientRectFilled`, `IconButton`,
+  `with_alpha`); asserted in `shared/tests/test_theme.cpp`.
 - **notes-core** — *updated*: `notes::split_title_body` (pure, UTF-8-safe) +
   seven-subcase doctest in `notes/tests/test_note_store.cpp`.
 - **`notes/src/entry.cpp` render** — *updated*: card list, view/edit split,

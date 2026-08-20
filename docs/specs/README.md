@@ -23,14 +23,14 @@
 | [003-notes-mvp](003-notes-mvp/spec.md) | 003-04 — coordinate actions | DRAFT |  |
 | [003-notes-mvp](003-notes-mvp/spec.md) | 003-05 — context-aware notes (optional MVP convenience) | DRAFT |  |
 | [003-notes-mvp](003-notes-mvp/spec.md) | 003-06 — native-look theme layer | IN_PROGRESS (claude/notes-native-theme-0…) |  |
-| [003-notes-mvp](003-notes-mvp/spec.md) | 003-07 — note cards + core interactions | IN_PROGRESS (claude/notes-native-theme-0…) |  |
+| [003-notes-mvp](003-notes-mvp/spec.md) | 003-07 — note cards + core interactions | RECONCILED (claude/notes-native-theme-0…) |  |
 
 ## Richer-skill selection audit (spec 096-05)
 
 Advisory (ADR-0040 auditability — never blocks). Regenerated from `reviews/slice-*.md` `substrate:` fields.
 
 - **1** pass(es) recorded `not-shown` (selection step did not run — the kill-criterion-1 defect signal).
-- **1** pass(es) recorded `non-interactive` (declared no-orchestrator / CI).
+- **2** pass(es) recorded `non-interactive` (declared no-orchestrator / CI).
 - **2** shown-and-declined anomaly(ies) (a high-confidence richer skill was shown and not applied):
   - `003-notes-mvp/slice-01-arch.md` — applied `arch-review`; declined: design-jury, design-review
   - `003-notes-mvp/slice-06-arch.md` — applied `none`; declined: design-review
