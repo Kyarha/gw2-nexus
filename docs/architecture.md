@@ -28,6 +28,7 @@ gw2-nexus/             # umbrella repo (this one) — planning + super-build
 ├── sdk/      →submodule→  RaidcoreGG/Nexus-API   # MIT, upstream
 ├── shared/   →submodule→  Kyarha/gw2-shared      # theme, settings, GW2 API client
 ├── notes/    →submodule→  Kyarha/gw2-notes       # Notes addon (MVP)
+├── cursor/   →submodule→  Kyarha/gw2-cursor      # Cursor Finder addon (spec 004)
 ├── markers/  →submodule→  Kyarha/gw2-markers     # Markers addon (later)
 └── tracker/  →submodule→  Kyarha/gw2-tracker     # Legendary/Bank tracker (later)
 ```
