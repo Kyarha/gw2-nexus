@@ -89,15 +89,18 @@ will be promoted to its own ADR with the build-skeleton spec. See
 
 ## Module boundaries
 
-<!-- elicited: 2026-08-12 / status: filled / hash: sha256:4547541f0007 -->
+<!-- elicited: 2026-08-12 / revised: 2026-08-20 (003-06 reconciliation: theme shipped) / status: filled / hash: sha256:5085a1b49c71 -->
 
 - **`shared/`** — the common layer every addon inherits: a **theme** module
-  (GW2-native ImGui styling), **settings/JSON persistence** (a byte-level
-  crash-safe atomic-write primitive at `shared/persistence/` — temp-file +
-  rename, added by spec 003-01 — plus JSON read/write via the addon directory),
-  and a **GW2 API client** (auth, on-disk caching, rate-limit / backoff
-  handling). Present today (spec 003-01): `shared/persistence`; theme (spec
-  003-06) and API client arrive with the slices that first need them.
+  (GW2-native ImGui styling — shipped in spec 003-06 as ImGui-free
+  `Color`/`Palette`/`Metrics` tokens plus a Windows-only header-only ImGui adapter
+  and reusable `TitleBar` / primitive-frame chrome), **settings/JSON persistence**
+  (a byte-level crash-safe atomic-write primitive at `shared/persistence/` —
+  temp-file + rename, added by spec 003-01 — plus JSON read/write via the addon
+  directory), and a **GW2 API client** (auth, on-disk caching, rate-limit /
+  backoff handling). Present today: `shared/persistence` (spec 003-01) and
+  `shared/theme` (spec 003-06); the **GW2 API client** arrives with the slice that
+  first needs it.
 - **Per-addon modules** (`notes`, `markers`, `tracker`) — each a self-contained
   DLL that depends on `shared/` and the Nexus-API. No addon depends on another
   addon.
