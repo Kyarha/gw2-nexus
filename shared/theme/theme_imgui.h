@@ -90,6 +90,104 @@ inline void PopPanelStyle(const ThemeScope& s)
     ImGui::PopStyleColor(s.colors);
 }
 
+// --- window chrome: native title bar -----------------------------------------
+
+// Draw a GW2-native window header, replacing ImGui's default title bar (use with
+// ImGuiWindowFlags_NoTitleBar). Spans the full window width on the window draw
+// list — an icon chip, a large gold title, a muted subtitle, an optional HOTKEY
+// pill, and a close affordance — then reserves its own vertical band in the
+// content flow so the rest of the panel lays out below it. Reusable chrome for
+// every addon that adopts the shared look (principle #6). Text is drawn at a
+// scaled size off the shared font (a serif face is the deferred AC4 non-target).
+// Returns true on the frame the close control is clicked.
+//
+// Call this as the FIRST thing inside the window body, before any other widget.
+inline bool TitleBar(const char* title, const char* subtitle, const char* hotkey,
+                     const Palette& p = gw2_palette(),
+                     const Metrics& /*m*/ = gw2_metrics())
+{
+    ImDrawList* dl   = ImGui::GetWindowDrawList();
+    ImFont*     font = ImGui::GetFont();
+    const float base = ImGui::GetFontSize();
+
+    const ImVec2 win_min = ImGui::GetWindowPos();
+    const float  win_w   = ImGui::GetWindowSize().x;
+    const float  bar_h   = 44.0f;
+    const float  edge    = 3.0f; // keep the frame's outer rings visible
+    const ImVec2 content_start = ImGui::GetCursorScreenPos(); // inset by padding
+    const ImVec2 bar_min(win_min.x + edge, win_min.y + edge);
+    const ImVec2 bar_max(win_min.x + win_w - edge, win_min.y + bar_h);
+    const float  mid_y = (bar_min.y + bar_max.y) * 0.5f;
+
+    // Band background + bottom rule.
+    dl->AddRectFilled(bar_min, bar_max, to_u32(p.titlebar_bg));
+    dl->AddLine(ImVec2(bar_min.x, bar_max.y), ImVec2(bar_max.x, bar_max.y),
+                to_u32(p.trim_line), 1.0f);
+
+    // Icon chip (rounded bronze) with a simple document glyph.
+    const float  icon = 30.0f;
+    const ImVec2 ic_min(bar_min.x + 9.0f, mid_y - icon * 0.5f);
+    const ImVec2 ic_max(ic_min.x + icon, ic_min.y + icon);
+    dl->AddRectFilled(ic_min, ic_max, to_u32(p.button), 3.0f);
+    dl->AddRect(ic_min, ic_max, to_u32(p.button_border), 3.0f);
+    {
+        const ImU32  gold = to_u32(p.text_gold);
+        const float  gx = ic_min.x + 9.0f, gy = ic_min.y + 7.0f, gw = 12.0f, gh = 16.0f;
+        dl->AddRect(ImVec2(gx, gy), ImVec2(gx + gw, gy + gh), gold, 1.0f,
+                    ImDrawCornerFlags_All, 1.4f);
+        dl->AddLine(ImVec2(gx + 3, gy + 5),  ImVec2(gx + gw - 3, gy + 5),  gold, 1.0f);
+        dl->AddLine(ImVec2(gx + 3, gy + 8),  ImVec2(gx + gw - 3, gy + 8),  gold, 1.0f);
+        dl->AddLine(ImVec2(gx + 3, gy + 11), ImVec2(gx + gw - 5, gy + 11), gold, 1.0f);
+    }
+
+    // Title (scaled up) + subtitle, vertically centered as a block.
+    const float title_size = base * 1.7f;
+    const float sub_size    = base * 0.95f;
+    const float text_x      = ic_max.x + 11.0f;
+    const bool  has_sub     = subtitle && subtitle[0];
+    const float block_h     = title_size + (has_sub ? 3.0f + sub_size : 0.0f);
+    const float ty          = mid_y - block_h * 0.5f;
+    dl->AddText(font, title_size, ImVec2(text_x, ty), to_u32(p.text_gold), title);
+    if (has_sub)
+    {
+        dl->AddText(font, sub_size, ImVec2(text_x, ty + title_size + 3.0f),
+                    to_u32(p.text_muted), subtitle);
+    }
+
+    // Close button (right edge): invisible hit-box for hover/click, drawn over.
+    const float  cbtn = 24.0f;
+    const ImVec2 cl_min(bar_max.x - 10.0f - cbtn, mid_y - cbtn * 0.5f);
+    const ImVec2 cl_max(cl_min.x + cbtn, cl_min.y + cbtn);
+    ImGui::SetCursorScreenPos(cl_min);
+    const bool closed  = ImGui::InvisibleButton("##titleclose", ImVec2(cbtn, cbtn));
+    const bool c_hover = ImGui::IsItemHovered();
+    dl->AddRect(cl_min, cl_max, to_u32(c_hover ? p.accent_danger : p.button_border),
+                3.0f);
+    const ImU32 x_col = to_u32(c_hover ? p.accent_danger : p.text);
+    const float xin = 7.0f;
+    dl->AddLine(ImVec2(cl_min.x + xin, cl_min.y + xin),
+                ImVec2(cl_max.x - xin, cl_max.y - xin), x_col, 1.8f);
+    dl->AddLine(ImVec2(cl_max.x - xin, cl_min.y + xin),
+                ImVec2(cl_min.x + xin, cl_max.y - xin), x_col, 1.8f);
+
+    // Optional HOTKEY pill, left of the close button.
+    if (hotkey && hotkey[0])
+    {
+        const ImVec2 ts = ImGui::CalcTextSize(hotkey);
+        const float  pill_w = ts.x + 16.0f, pill_h = 18.0f;
+        const ImVec2 pl_max(cl_min.x - 8.0f, mid_y + pill_h * 0.5f);
+        const ImVec2 pl_min(pl_max.x - pill_w, mid_y - pill_h * 0.5f);
+        dl->AddRectFilled(pl_min, pl_max, to_u32(p.input_bg), 3.0f);
+        dl->AddRect(pl_min, pl_max, to_u32(p.trim_line), 3.0f);
+        dl->AddText(font, base, ImVec2(pl_min.x + 8.0f, mid_y - ts.y * 0.5f),
+                    to_u32(p.text_muted), hotkey);
+    }
+
+    // Reserve the band in the content flow so subsequent widgets start below it.
+    ImGui::SetCursorScreenPos(ImVec2(content_start.x, bar_max.y + 8.0f));
+    return closed;
+}
+
 // --- default frame (primitives) ----------------------------------------------
 
 // Draw the default basic themed frame with primitives: a small stack of

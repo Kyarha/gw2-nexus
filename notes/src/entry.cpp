@@ -13,6 +13,7 @@
 #include <Windows.h>
 
 #include <algorithm>
+#include <cfloat>
 #include <filesystem>
 #include <optional>
 #include <string>
@@ -93,10 +94,29 @@ void RenderPanel()
 {
     if (!g_Store) { return; }
 
-    if (ImGui::Button("+ Add note"))
+    // One palette per frame, reused by the title bar, the primary button, and the
+    // coordinate accent below (avoids re-deriving gw2_palette() per widget).
+    const shared::theme::Palette pal = shared::theme::gw2_palette();
+
+    // Native title bar (003-06): replaces ImGui's default bar (the window uses
+    // NoTitleBar). Icon + gold title + subtitle + hotkey pill + close, drawn by
+    // the shared theme. The close affordance lives here now.
+    static const std::string kHotkeyPill = std::string("HOTKEY  ") + kDefaultBind;
+    if (shared::theme::TitleBar("Notes", "Personal organiser",
+                                kHotkeyPill.c_str(), pal))
     {
-        g_Store->add(std::string{});
+        g_PanelOpen = false;
     }
+
+    // Primary action, sized up to read as the panel's main call-to-action (AC4
+    // toolbar row). Bronze fill comes from the themed Button colors; the gold
+    // label + extra frame padding make it prominent rather than a default button.
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(14.0f, 8.0f));
+    ImGui::PushStyleColor(ImGuiCol_Text, shared::theme::to_vec4(pal.button_text));
+    if (ImGui::Button("+  New note")) { g_Store->add(std::string{}); }
+    ImGui::PopStyleColor();
+    ImGui::PopStyleVar();
+    ImGui::Spacing();
     ImGui::Separator();
 
     std::string to_delete; // defer deletion until after the loop
@@ -124,8 +144,7 @@ void RenderPanel()
             // Coordinates read in the theme's teal accent (mockup: links/coords
             // are teal #7fd0d6), so the stamped place stands out natively (AC3).
             ImGui::PushStyleColor(
-                ImGuiCol_Text,
-                shared::theme::to_vec4(shared::theme::gw2_palette().accent_teal));
+                ImGuiCol_Text, shared::theme::to_vec4(pal.accent_teal));
             ImGui::TextUnformatted(notes::format_coordinate(*note.coordinate).c_str());
             ImGui::PopStyleColor();
             ImGui::SameLine();
@@ -171,6 +190,10 @@ void AddonRender()
     ImGui::SetNextWindowPos(ImVec2(display.x * 0.5f, display.y * 0.5f),
                             ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
     ImGui::SetNextWindowSize(ImVec2(360.0f, 420.0f), ImGuiCond_FirstUseEver);
+    // Floor the width so the title-bar cluster (title + hotkey pill + close)
+    // never overlaps when the user shrinks the panel.
+    ImGui::SetNextWindowSizeConstraints(ImVec2(320.0f, 220.0f),
+                                        ImVec2(FLT_MAX, FLT_MAX));
 
     // Native-look theme (003-06): apply the shared theme's colors + metrics
     // around our window only (stack-scoped, so other addons' style is untouched
@@ -182,7 +205,10 @@ void AddonRender()
     const shared::theme::ThemeScope scope =
         shared::theme::PushPanelStyle(pal, met); // before Begin: window vars apply
 
-    const ImGuiWindowFlags flags = ImGuiWindowFlags_NoCollapse;
+    // NoTitleBar: the shared theme draws our own native title bar inside the body
+    // (see RenderPanel). The window is still movable by dragging the body.
+    const ImGuiWindowFlags flags =
+        ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse;
     if (ImGui::Begin(kWindowName, &g_PanelOpen, flags))
     {
         const ImVec2 w_min = ImGui::GetWindowPos();
