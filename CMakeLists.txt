@@ -56,4 +56,5 @@ enable_testing()
 # --- Shared layer + addons ----------------------------------------------------
 add_subdirectory(shared)
 add_subdirectory(notes)
+add_subdirectory(cursor)
 add_subdirectory(hello)
