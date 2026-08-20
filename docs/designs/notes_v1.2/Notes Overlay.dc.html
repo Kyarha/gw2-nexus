@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Spectral:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: #05060a; }
+  a { color: #7fd0d6; }
+  a:hover { color: #a7e6ea; }
+  ::-webkit-scrollbar { width: 10px; }
+  ::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
+  ::-webkit-scrollbar-thumb { background: rgba(180,150,90,0.28); border-radius: 6px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(180,150,90,0.45); }
+  @keyframes gw-panel-in { from { opacity: 0; transform: translateY(8px) scale(0.99); } to { opacity: 1; transform: none; } }
+  @keyframes gw-pop { from { opacity: 0; transform: translateY(-4px) scale(0.97); } to { opacity: 1; transform: none; } }
+  @keyframes gw-toast { from { opacity: 0; } to { opacity: 1; } }
+  textarea, input { font-family: 'Spectral', Georgia, serif; }
+</style>
+</helmet>
+<div onClick="{{ closeCoordMenu }}" style="position:relative; width:100%; min-height:100vh; overflow:hidden; font-family:'Spectral',Georgia,serif; background: radial-gradient(120% 90% at 50% -10%, #1a2740 0%, #0d1524 42%, #070a12 100%);">
+
+  <!-- game-world backdrop suggestion -->
+  <div style="position:absolute; inset:0; pointer-events:none; background: radial-gradient(80% 55% at 22% 78%, rgba(60,90,70,0.22), transparent 60%), radial-gradient(70% 50% at 82% 70%, rgba(90,70,110,0.16), transparent 60%);"></div>
+  <div style="position:absolute; left:0; right:0; bottom:0; height:34%; pointer-events:none; background: linear-gradient(to top, rgba(8,10,16,0.9), transparent); filter: blur(2px);"></div>
+  <div style="position:absolute; inset:0; pointer-events:none; box-shadow: inset 0 0 240px 40px rgba(0,0,0,0.7);"></div>
+
+  <!-- Icon-rail side toolbar -->
+  <div style="position:absolute; left:0; top:64px; width:48px; display:flex; flex-direction:column; align-items:center; gap:4px; padding:10px 0; background: linear-gradient(to right, rgba(6,8,12,0.94), rgba(10,13,20,0.7)); border-right:1px solid rgba(150,120,70,0.22); border-top:1px solid rgba(150,120,70,0.18); border-bottom:1px solid rgba(150,120,70,0.18);">
+    <button onClick="{{ toggleFromRail }}" title="Notes  [N]" style="{{ railBtnStyle }}">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l3 3v15H6z"></path><path d="M9 9h6M9 13h6M9 17h3"></path></svg>
+    </button>
+    <div style="width:22px; height:1px; background:rgba(150,120,70,0.2); margin:3px 0;"></div>
+    <div title="Events" style="display:flex;align-items:center;justify-content:center;width:38px;height:38px;color:rgba(190,180,160,0.4);"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"></circle><path d="M12 8v4l3 2"></path></svg></div>
+    <div title="Settings" style="display:flex;align-items:center;justify-content:center;width:38px;height:38px;color:rgba(190,180,160,0.4);"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1l2.1-2.1M17 7l2.1-2.1"></path></svg></div>
+  </div>
+
+  <!-- The Notes overlay window -->
+  <sc-if value="{{ panelOpen }}" hint-placeholder-val="{{ true }}">
+  <div style="position:absolute; left:96px; top:56px; width:848px; max-width:calc(100vw - 120px); animation: gw-panel-in 0.22s ease-out;">
+    <div style="position:relative; background-color:#191611; background-image: radial-gradient(120% 80% at 15% 8%, rgba(84,68,40,0.28), transparent 55%), radial-gradient(90% 70% at 88% 96%, rgba(70,54,34,0.24), transparent 55%), radial-gradient(40% 30% at 70% 25%, rgba(30,26,20,0.7), transparent 60%), repeating-linear-gradient(115deg, rgba(120,96,56,0.05) 0px, rgba(120,96,56,0.05) 1px, transparent 1px, transparent 4px), repeating-linear-gradient(200deg, rgba(0,0,0,0.06) 0px, rgba(0,0,0,0.06) 1px, transparent 1px, transparent 5px), linear-gradient(180deg, rgba(34,30,23,0.6), rgba(15,14,11,0.85)); border:1px solid rgba(150,120,70,0.4); border-radius:3px; box-shadow: 0 26px 70px rgba(0,0,0,0.7), 0 0 0 6px rgba(6,6,8,0.55), inset 0 0 60px 12px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(0,0,0,0.5), inset 0 1px 0 rgba(220,190,120,0.14);">
+
+      <!-- title bar -->
+      <div style="display:flex; align-items:center; gap:12px; padding:12px 14px 12px 16px; border-bottom:1px solid rgba(150,120,70,0.28); background: linear-gradient(180deg, rgba(30,27,21,0.9), rgba(18,16,12,0.4));">
+        <div style="flex:none; display:flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:3px; background: radial-gradient(circle at 40% 30%, rgba(70,60,42,0.9), rgba(24,22,16,0.9)); border:1px solid rgba(180,150,90,0.5); color:#e6c86a;">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l3 3v15H6z"></path><path d="M9 9h6M9 13h6M9 17h3"></path></svg>
+        </div>
+        <div style="flex:1 1 auto; min-width:0;">
+          <div style="font-family:'Cinzel',serif; font-weight:700; font-size:20px; letter-spacing:0.03em; color:#e6c86a; text-shadow:0 1px 2px rgba(0,0,0,0.7); line-height:1;">Notes</div>
+          <div style="font-family:'Spectral',serif; font-size:12px; color:rgba(190,180,160,0.62); margin-top:3px;">Personal organiser</div>
+        </div>
+        <div style="flex:none; display:flex; align-items:center; gap:2px; padding:3px 8px; border:1px solid rgba(150,120,70,0.35); border-radius:3px; background:rgba(0,0,0,0.28); color:rgba(210,195,160,0.75); font-family:'Cinzel',serif; font-size:11px; letter-spacing:0.05em;">HOTKEY&nbsp;<span style="color:#e6c86a; font-weight:700;">N</span></div>
+        <button onClick="{{ togglePanel }}" title="Close overlay" style="flex:none; display:flex; align-items:center; justify-content:center; width:26px; height:26px; margin-left:2px; border:1px solid rgba(150,120,70,0.3); border-radius:3px; background:rgba(0,0,0,0.25); color:rgba(210,195,160,0.8); cursor:pointer;" style-hover="border-color:rgba(200,120,90,0.7); color:#e8b09a;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 5l14 14M19 5L5 19"></path></svg>
+        </button>
+      </div>
+
+      <!-- two-pane body -->
+      <div style="display:flex; align-items:stretch;">
+
+        <!-- ===== LEFT PANE ===== -->
+        <div style="flex:none; width:250px; display:flex; flex-direction:column; border-right:1px solid rgba(150,120,70,0.24); background:rgba(0,0,0,0.2);">
+          <!-- search -->
+          <div style="padding:12px 12px 10px;">
+            <div style="position:relative;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(190,180,160,0.55)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="position:absolute; left:10px; top:50%; transform:translateY(-50%);"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4-4"></path></svg>
+              <input value="{{ query }}" onChange="{{ onQuery }}" placeholder="Search notes…" style="width:100%; padding:8px 10px 8px 30px; background:rgba(0,0,0,0.34); border:1px solid rgba(150,120,70,0.32); border-radius:3px; color:#ecdcae; font-size:13px; outline:none;">
+            </div>
+          </div>
+
+          <!-- scrollable category tree -->
+          <div style="flex:1 1 auto; overflow-y:auto; max-height:60vh; min-height:260px; padding:2px 8px 12px;">
+            <div style="font-family:'Cinzel',serif; font-size:11px; letter-spacing:0.08em; color:rgba(190,180,160,0.5); text-transform:uppercase; padding:6px 6px 8px;">Categories</div>
+
+            <!-- All notes -->
+            <button onClick="{{ selectAll }}" style="{{ allRowStyle }}">
+              <span style="display:flex; align-items:center; gap:9px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                All notes
+              </span>
+              <span style="{{ allCountStyle }}">{{ allCount }}</span>
+            </button>
+
+            <sc-for list="{{ categories }}" as="cat" hint-placeholder-count="5">
+              <div key="{{ cat.key }}" style="margin-top:2px;">
+                <div onClick="{{ cat.onSelect }}" style="{{ cat.headerStyle }}">
+                  <button onClick="{{ cat.onToggle }}" title="Expand / collapse" style="flex:none; display:flex; align-items:center; justify-content:center; width:18px; height:18px; margin-right:2px; padding:0; border:none; background:transparent; color:rgba(210,195,160,0.7); cursor:pointer;">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="{{ cat.chevronStyle }}"><path d="M9 6l6 6-6 6"></path></svg>
+                  </button>
+                  <span style="flex:none; width:7px; height:7px; border-radius:2px; background:{{ cat.color }}; box-shadow:0 0 6px rgba(0,0,0,0.4);"></span>
+                  <span style="flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ cat.label }}</span>
+                  <span style="{{ cat.countStyle }}">{{ cat.count }}</span>
+                </div>
+
+                <sc-if value="{{ cat.expanded }}">
+                  <div style="padding:1px 0 4px 8px; margin-left:8px; border-left:1px solid rgba(150,120,70,0.18);">
+                    <sc-for list="{{ cat.items }}" as="row" hint-placeholder-count="2">
+                      <button key="{{ row.id }}" onClick="{{ row.onClick }}" style="{{ row.style }}">
+                        <span style="flex:none; width:6px; height:6px; border-radius:50%; background:{{ row.dotColor }};"></span>
+                        <span style="flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ row.title }}</span>
+                        <sc-if value="{{ row.auto }}"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#7fd0d6" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex:none;"><path d="M12 3v6M12 21a6 6 0 006-6M6 15a6 6 0 006 6"></path></svg></sc-if>
+                      </button>
+                    </sc-for>
+                    <sc-if value="{{ cat.empty }}">
+                      <div style="padding:5px 8px; font-size:12px; font-style:italic; color:rgba(190,180,160,0.4);">No notes</div>
+                    </sc-if>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <!-- ===== RIGHT PANE ===== -->
+        <div style="flex:1 1 auto; min-width:0; display:flex; flex-direction:column;">
+
+          <!-- toolbar row -->
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:11px 16px; border-bottom:1px solid rgba(150,120,70,0.18); background:rgba(0,0,0,0.14);">
+            <span style="flex:none; display:flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:3px; background:rgba(0,0,0,0.3); border:1px solid rgba(150,120,70,0.3); color:{{ headingColor }};">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M4 12h16M4 17h10"></path></svg>
+            </span>
+            <div style="font-family:'Cinzel',serif; font-weight:600; font-size:15px; letter-spacing:0.02em; color:#ecdcae;">{{ headingLabel }}</div>
+            <span style="font-size:12px; color:rgba(190,180,160,0.5);">{{ headingCount }}</span>
+            <div style="flex:1 1 auto;"></div>
+            <button onClick="{{ startNew }}" style="display:flex; align-items:center; gap:7px; padding:7px 13px; border:1px solid rgba(180,150,90,0.55); border-radius:3px; background: linear-gradient(180deg, rgba(74,62,38,0.9), rgba(44,37,22,0.9)); color:#f0d78a; font-family:'Cinzel',serif; font-weight:600; font-size:13px; letter-spacing:0.02em; cursor:pointer; box-shadow: inset 0 1px 0 rgba(230,200,120,0.18);" style-hover="border-color:rgba(220,185,110,0.85); color:#ffe89e;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
+              New note
+            </button>
+          </div>
+
+          <!-- context strip -->
+          <div style="display:flex; align-items:center; gap:9px; padding:7px 16px; border-bottom:1px solid rgba(150,120,70,0.12); background:rgba(0,0,0,0.24); font-size:12px; color:rgba(190,180,160,0.55);">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(159,216,176,0.85)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 4-6 8-6s8 2 8 6"></path></svg>
+            <span style="color:#9fd8b0; font-weight:500;">{{ ctxCharacter }}</span>
+            <span style="opacity:0.5;">·</span>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="rgba(167,196,234,0.85)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.5-7-11a7 7 0 0114 0c0 4.5-7 11-7 11z"></path><circle cx="12" cy="10" r="2.4"></circle></svg>
+            <span style="color:#a7c4ea; font-weight:500;">{{ ctxZone }}</span>
+          </div>
+
+          <!-- scrollable note area -->
+          <div style="flex:1 1 auto; max-height:calc(60vh - 34px); min-height:260px; overflow-y:auto; padding:14px 16px 18px;">
+
+            <sc-if value="{{ loading }}">
+              <div style="padding:40px 0; text-align:center; color:rgba(190,180,160,0.5); font-style:italic;">Loading notes…</div>
+            </sc-if>
+
+            <!-- new-note editor -->
+            <sc-if value="{{ newEditing }}">
+              <div style="{{ formWrapStyle }}">
+                <div style="font-family:'Cinzel',serif; font-weight:600; font-size:13px; color:#e6c86a; letter-spacing:0.04em; margin-bottom:10px;">NEW NOTE</div>
+                <input value="{{ draftTitle }}" onChange="{{ onTitle }}" placeholder="Short title" style="{{ inputStyle }}">
+                <div style="font-size:11px; letter-spacing:0.05em; color:rgba(190,180,160,0.5); text-transform:uppercase; margin:12px 0 6px;">Category</div>
+                <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                  <sc-for list="{{ categoryChips }}" as="c" hint-placeholder-count="5">
+                    <button key="{{ c.key }}" onClick="{{ c.onClick }}" style="{{ c.style }}">{{ c.label }}</button>
+                  </sc-for>
+                </div>
+                <div style="font-size:11px; letter-spacing:0.05em; color:rgba(190,180,160,0.5); text-transform:uppercase; margin:12px 0 6px;">Scope</div>
+                <div style="display:flex; gap:6px;">
+                  <button onClick="{{ setScopeGlobal }}" style="{{ scopeBtnGlobal }}">Global</button>
+                  <button onClick="{{ setScopeCharacter }}" style="{{ scopeBtnCharacter }}">Character</button>
+                  <button onClick="{{ setScopeZone }}" style="{{ scopeBtnZone }}">Zone</button>
+                </div>
+                <sc-if value="{{ showTarget }}">
+                  <input value="{{ draftTarget }}" onChange="{{ onTarget }}" placeholder="{{ targetPlaceholder }}" style="{{ inputStyleMt }}">
+                </sc-if>
+                <textarea value="{{ draftBody }}" onChange="{{ onBody }}" placeholder="Write your note…" rows="4" style="{{ textareaStyle }}"></textarea>
+                <div style="display:flex; align-items:center; gap:8px; margin-top:10px;">
+                  <button onClick="{{ saveDraft }}" style="{{ saveBtnStyle }}">Save note</button>
+                  <button onClick="{{ cancelDraft }}" style="{{ ghostBtnStyle }}">Cancel</button>
+                  <div style="flex:1 1 auto;"></div>
+                  <span style="font-size:11px; color:rgba(190,180,160,0.45); font-style:italic;">Wrap coords like [Place — 1234, 5678]</span>
+                </div>
+              </div>
+            </sc-if>
+
+            <!-- empty state -->
+            <sc-if value="{{ showEmpty }}">
+              <div style="display:flex; flex-direction:column; align-items:center; text-align:center; padding:38px 20px 30px; color:rgba(190,180,160,0.7);">
+                <div style="width:60px; height:60px; display:flex; align-items:center; justify-content:center; border-radius:4px; border:1px dashed rgba(180,150,90,0.45); color:rgba(210,195,160,0.55); margin-bottom:16px;">
+                  <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h9l3 3v15H6z"></path><path d="M9 9h6M9 13h6M9 17h3"></path></svg>
+                </div>
+                <div style="font-family:'Cinzel',serif; font-size:16px; color:#d8c79a; margin-bottom:6px;">{{ emptyTitle }}</div>
+                <div style="font-size:13px; max-width:320px; line-height:1.5; color:rgba(190,180,160,0.6); margin-bottom:16px;">{{ emptyBody }}</div>
+                <button onClick="{{ startNew }}" style="display:flex; align-items:center; gap:7px; padding:8px 15px; border:1px solid rgba(180,150,90,0.6); border-radius:3px; background: linear-gradient(180deg, rgba(74,62,38,0.9), rgba(44,37,22,0.9)); color:#f0d78a; font-family:'Cinzel',serif; font-weight:600; font-size:13px; cursor:pointer;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
+                  Create a note
+                </button>
+              </div>
+            </sc-if>
+
+            <!-- note list -->
+            <div style="display:flex; flex-direction:column; gap:12px;">
+              <sc-for list="{{ notes }}" as="note" hint-placeholder-count="4">
+                <div key="{{ note.id }}">
+
+                  <!-- display mode -->
+                  <sc-if value="{{ note.notEditing }}">
+                    <div style="{{ note.cardStyle }}">
+                      <!-- tack -->
+                      <div style="position:absolute; top:-6px; left:50%; transform:translateX(-50%); width:11px; height:11px; border-radius:50%; background: radial-gradient(circle at 35% 30%, #f0d78a, #8a6f2e); box-shadow:0 2px 4px rgba(0,0,0,0.5);"></div>
+
+                      <div style="display:flex; align-items:flex-start; gap:10px;">
+                        <div style="flex:1 1 auto; min-width:0;">
+                          <div style="font-family:'Cinzel',serif; font-weight:600; font-size:15.5px; color:#ecdcae; line-height:1.25; text-shadow:0 1px 1px rgba(0,0,0,0.5);">{{ note.title }}</div>
+                          <div style="display:flex; align-items:center; gap:7px; flex-wrap:wrap; margin-top:7px;">
+                            <span style="display:inline-flex; align-items:center; gap:5px; padding:2px 9px; border-radius:11px; font-size:11px; font-weight:600; letter-spacing:0.03em; background:rgba(255,255,255,0.04); border:1px solid {{ note.catBorder }}; color:{{ note.catColor }};"><span style="width:6px;height:6px;border-radius:2px;background:{{ note.catColor }};"></span>{{ note.catLabel }}</span>
+                            <sc-if value="{{ note.isGlobal }}"><span style="display:inline-flex; align-items:center; gap:5px; padding:2px 9px; border-radius:11px; font-size:11px; font-weight:600; letter-spacing:0.03em; background:rgba(217,182,78,0.14); border:1px solid rgba(217,182,78,0.45); color:#e6c86a;"><span style="width:6px;height:6px;border-radius:50%;background:#e6c86a;"></span>Global</span></sc-if>
+                            <sc-if value="{{ note.isCharacter }}"><span style="display:inline-flex; align-items:center; gap:5px; padding:2px 9px; border-radius:11px; font-size:11px; font-weight:600; letter-spacing:0.03em; background:rgba(120,200,150,0.12); border:1px solid rgba(120,200,150,0.42); color:#9fd8b0;"><span style="width:6px;height:6px;border-radius:50%;background:#9fd8b0;"></span>{{ note.badgeText }}</span></sc-if>
+                            <sc-if value="{{ note.isZone }}"><span style="display:inline-flex; align-items:center; gap:5px; padding:2px 9px; border-radius:11px; font-size:11px; font-weight:600; letter-spacing:0.03em; background:rgba(120,170,225,0.12); border:1px solid rgba(120,170,225,0.42); color:#a7c4ea;"><span style="width:6px;height:6px;border-radius:50%;background:#a7c4ea;"></span>{{ note.badgeText }}</span></sc-if>
+                            <sc-if value="{{ note.autoSurface }}"><span style="display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:11px; font-size:10.5px; font-weight:600; letter-spacing:0.02em; background:rgba(127,208,214,0.1); border:1px solid rgba(127,208,214,0.4); color:#7fd0d6;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v6M12 21a6 6 0 006-6M6 15a6 6 0 006 6"></path></svg>Auto-surfacing here</span></sc-if>
+                          </div>
+                        </div>
+                        <div style="flex:none; display:flex; gap:4px;">
+                          <button onClick="{{ note.edit }}" title="Edit note" style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;border:1px solid rgba(150,120,70,0.28);border-radius:3px;background:rgba(0,0,0,0.22);color:rgba(210,195,160,0.75);cursor:pointer;" style-hover="border-color:rgba(220,185,110,0.7);color:#f0d78a;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L18 10l-4-4L4 16z"></path><path d="M13 5l4 4"></path></svg>
+                          </button>
+                          <button onClick="{{ note.askDelete }}" title="Delete note" style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;border:1px solid rgba(150,120,70,0.28);border-radius:3px;background:rgba(0,0,0,0.22);color:rgba(210,195,160,0.75);cursor:pointer;" style-hover="border-color:rgba(200,110,90,0.75);color:#e8998a;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"></path></svg>
+                          </button>
+                        </div>
+                      </div>
+
+                      <!-- body with inline coordinates -->
+                      <div style="margin-top:11px; font-size:14px; line-height:1.62; color:#cfc7b6;">
+                        <sc-for list="{{ note.segments }}" as="seg" hint-placeholder-count="2">
+                          <sc-if value="{{ seg.isText }}"><span key="{{ seg.key }}">{{ seg.value }}</span></sc-if>
+                          <sc-if value="{{ seg.isCoord }}"><button key="{{ seg.key }}" onClick="{{ seg.onClick }}" style="display:inline-flex; align-items:center; gap:4px; margin:0 1px; padding:1px 7px 2px; border:1px solid rgba(127,208,214,0.42); border-radius:3px; background:rgba(127,208,214,0.1); color:#8fdfe4; font-family:'Spectral',serif; font-size:13px; font-weight:500; cursor:pointer; vertical-align:baseline;" style-hover="background:rgba(127,208,214,0.2); border-color:rgba(127,208,214,0.75); color:#b7f0f4;"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.5-7-11a7 7 0 0114 0c0 4.5-7 11-7 11z"></path><circle cx="12" cy="10" r="2.2"></circle></svg>{{ seg.label }}</button></sc-if>
+                        </sc-for>
+                      </div>
+
+                      <!-- delete confirm -->
+                      <sc-if value="{{ note.confirming }}">
+                        <div style="display:flex; align-items:center; gap:10px; margin-top:12px; padding:9px 12px; border:1px solid rgba(200,110,90,0.4); border-radius:3px; background:rgba(60,24,20,0.4);">
+                          <span style="flex:1 1 auto; font-size:13px; color:#e8b8ac;">Delete this note? This can't be undone.</span>
+                          <button onClick="{{ note.doDelete }}" style="padding:5px 12px; border:1px solid rgba(200,110,90,0.7); border-radius:3px; background:rgba(120,40,32,0.7); color:#ffd8cd; font-family:'Cinzel',serif; font-weight:600; font-size:12px; cursor:pointer;">Delete</button>
+                          <button onClick="{{ note.cancelDelete }}" style="padding:5px 12px; border:1px solid rgba(150,120,70,0.35); border-radius:3px; background:rgba(0,0,0,0.25); color:rgba(210,195,160,0.8); font-family:'Cinzel',serif; font-size:12px; cursor:pointer;">Keep</button>
+                        </div>
+                      </sc-if>
+                    </div>
+                  </sc-if>
+
+                  <!-- edit mode -->
+                  <sc-if value="{{ note.isEditing }}">
+                    <div style="{{ formWrapStyle }}">
+                      <div style="font-family:'Cinzel',serif; font-weight:600; font-size:13px; color:#e6c86a; letter-spacing:0.04em; margin-bottom:10px;">EDIT NOTE</div>
+                      <input value="{{ draftTitle }}" onChange="{{ onTitle }}" placeholder="Short title" style="{{ inputStyle }}">
+                      <div style="font-size:11px; letter-spacing:0.05em; color:rgba(190,180,160,0.5); text-transform:uppercase; margin:12px 0 6px;">Category</div>
+                      <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                        <sc-for list="{{ categoryChips }}" as="c" hint-placeholder-count="5">
+                          <button key="{{ c.key }}" onClick="{{ c.onClick }}" style="{{ c.style }}">{{ c.label }}</button>
+                        </sc-for>
+                      </div>
+                      <div style="font-size:11px; letter-spacing:0.05em; color:rgba(190,180,160,0.5); text-transform:uppercase; margin:12px 0 6px;">Scope</div>
+                      <div style="display:flex; gap:6px;">
+                        <button onClick="{{ setScopeGlobal }}" style="{{ scopeBtnGlobal }}">Global</button>
+                        <button onClick="{{ setScopeCharacter }}" style="{{ scopeBtnCharacter }}">Character</button>
+                        <button onClick="{{ setScopeZone }}" style="{{ scopeBtnZone }}">Zone</button>
+                      </div>
+                      <sc-if value="{{ showTarget }}">
+                        <input value="{{ draftTarget }}" onChange="{{ onTarget }}" placeholder="{{ targetPlaceholder }}" style="{{ inputStyleMt }}">
+                      </sc-if>
+                      <textarea value="{{ draftBody }}" onChange="{{ onBody }}" placeholder="Write your note…" rows="4" style="{{ textareaStyle }}"></textarea>
+                      <div style="display:flex; align-items:center; gap:8px; margin-top:10px;">
+                        <button onClick="{{ saveDraft }}" style="{{ saveBtnStyle }}">Save changes</button>
+                        <button onClick="{{ cancelDraft }}" style="{{ ghostBtnStyle }}">Cancel</button>
+                        <div style="flex:1 1 auto;"></div>
+                        <span style="font-size:11px; color:rgba(190,180,160,0.45); font-style:italic;">Wrap coords like [Place — 1234, 5678]</span>
+                      </div>
+                    </div>
+                  </sc-if>
+
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <!-- coordinate action menu -->
+  <sc-if value="{{ coordMenuOpen }}">
+    <div onClick="{{ stopMenuClick }}" style="{{ coordMenuStyle }}">
+      <div style="padding:8px 12px 7px; border-bottom:1px solid rgba(150,120,70,0.2);">
+        <div style="font-size:10.5px; letter-spacing:0.06em; color:rgba(190,180,160,0.55); text-transform:uppercase;">Coordinate</div>
+        <div style="font-family:'Spectral',serif; font-size:13.5px; color:#cbe9eb; margin-top:2px;">{{ coordMenuLabel }}</div>
+      </div>
+      <button onClick="{{ coordShowMap }}" style="display:flex; align-items:center; gap:9px; width:100%; padding:9px 12px; border:none; background:transparent; color:#d8d0c0; font-family:'Spectral',serif; font-size:13.5px; text-align:left; cursor:pointer;" style-hover="background:rgba(127,208,214,0.12); color:#cbe9eb;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8fdfe4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.5-7-11a7 7 0 0114 0c0 4.5-7 11-7 11z"></path><circle cx="12" cy="10" r="2.4"></circle></svg>
+        Show on map
+      </button>
+      <button onClick="{{ coordShare }}" style="display:flex; align-items:center; gap:9px; width:100%; padding:9px 12px; border:none; border-top:1px solid rgba(150,120,70,0.14); background:transparent; color:#d8d0c0; font-family:'Spectral',serif; font-size:13.5px; text-align:left; cursor:pointer;" style-hover="background:rgba(127,208,214,0.12); color:#cbe9eb;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8fdfe4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12l-18 8 4-8-4-8z"></path></svg>
+        Share to chat
+      </button>
+    </div>
+  </sc-if>
+
+  <!-- toast -->
+  <sc-if value="{{ toast }}">
+    <div style="position:fixed; left:50%; bottom:96px; transform:translateX(-50%); z-index:60; display:flex; align-items:center; gap:9px; padding:11px 18px; background: linear-gradient(180deg, rgba(30,27,21,0.98), rgba(18,16,12,0.98)); border:1px solid rgba(180,150,90,0.5); border-radius:3px; box-shadow:0 12px 34px rgba(0,0,0,0.6); color:#e8ddc4; font-size:13.5px; animation: gw-toast 0.2s ease-out; max-width:520px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7fd0d6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>
+      <span>{{ toast }}</span>
+    </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = {
+    notes: [],
+    loading: true,
+    panelOpen: true,
+    query: "",
+    activeCategory: null,   // null = all notes
+    collapsed: {},          // { [catKey]: true } → collapsed; default expanded
+    selectedId: null,
+    editingId: null,        // note id, or "new", or null
+    draft: null,            // { title, body, category, scope, target }
+    confirmDeleteId: null,
+    coordMenu: null,
+    toast: null,
+  };
+
+  componentDidMount() {
+    import("./notes.js")
+      .then((mod) => {
+        this.mod = mod;
+        this.setState({ notes: mod.SEED_NOTES.map((n) => ({ ...n })), loading: false });
+      })
+      .catch((err) => {
+        console.error("Failed to load notes.js", err);
+        this.setState({ loading: false });
+      });
+    this._onKey = (e) => this.handleKey(e);
+    window.addEventListener("keydown", this._onKey);
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener("keydown", this._onKey);
+    if (this._toastTimer) clearTimeout(this._toastTimer);
+  }
+
+  handleKey(e) {
+    const tag = (e.target && e.target.tagName) || "";
+    const typing = tag === "INPUT" || tag === "TEXTAREA";
+    if (e.key === "Escape") {
+      if (this.state.coordMenu) return this.setState({ coordMenu: null });
+      if (this.state.editingId) return this.cancelDraft();
+      if (this.state.panelOpen && !typing) return this.setState({ panelOpen: false });
+      return;
+    }
+    if (!typing && (e.key === "n" || e.key === "N")) {
+      e.preventDefault();
+      this.setState((s) => ({ panelOpen: !s.panelOpen }));
+    }
+  }
+
+  togglePanel = () => this.setState((s) => ({ panelOpen: !s.panelOpen, coordMenu: null }));
+
+  // ---- left-pane navigation ----
+  onQuery = (e) => this.setState({ query: e.target.value });
+  selectAll = () => this.setState({ activeCategory: null, selectedId: null, coordMenu: null });
+  selectCategory = (key) =>
+    this.setState((s) => {
+      const collapsed = { ...s.collapsed };
+      delete collapsed[key]; // selecting always expands
+      return { activeCategory: key, selectedId: null, collapsed, coordMenu: null };
+    });
+  toggleCollapse = (key, e) => {
+    if (e) e.stopPropagation();
+    this.setState((s) => {
+      const collapsed = { ...s.collapsed };
+      if (collapsed[key]) delete collapsed[key];
+      else collapsed[key] = true;
+      return { collapsed };
+    });
+  };
+  selectNote = (n) =>
+    this.setState((s) => {
+      const collapsed = { ...s.collapsed };
+      delete collapsed[n.category];
+      return { selectedId: n.id, activeCategory: n.category, collapsed, coordMenu: null };
+    });
+
+  // ---- create / edit ----
+  startNew = () =>
+    this.setState((s) => ({
+      editingId: "new",
+      draft: {
+        title: "",
+        body: "",
+        category: s.activeCategory || (this.mod ? this.mod.CATEGORIES[0].key : "crafting"),
+        scope: "global",
+        target: "",
+      },
+      confirmDeleteId: null,
+      coordMenu: null,
+    }));
+
+  startEdit = (id) => {
+    const n = this.state.notes.find((x) => x.id === id);
+    if (!n) return;
+    this.setState({
+      editingId: id,
+      draft: { title: n.title, body: n.body, category: n.category, scope: n.scope, target: n.target || "" },
+      confirmDeleteId: null,
+      coordMenu: null,
+    });
+  };
+
+  cancelDraft = () => this.setState({ editingId: null, draft: null });
+
+  updateDraft = (field, value) =>
+    this.setState((s) => ({ draft: { ...s.draft, [field]: value } }));
+
+  setScope = (scope) => this.updateDraft("scope", scope);
+  setCategory = (category) => this.updateDraft("category", category);
+
+  saveDraft = () => {
+    const d = this.state.draft;
+    if (!d) return;
+    const title = (d.title || "").trim() || "Untitled note";
+    const body = (d.body || "").trim();
+    const category = d.category || "crafting";
+    const scope = d.scope || "global";
+    const target = scope === "global" ? null : (d.target || "").trim() || null;
+    this.setState((s) => {
+      let notes;
+      let newId = s.editingId;
+      if (s.editingId === "new") {
+        newId = "n-" + Date.now();
+        notes = [{ id: newId, title, body, category, scope, target }, ...s.notes];
+      } else {
+        notes = s.notes.map((n) =>
+          n.id === s.editingId ? { ...n, title, body, category, scope, target } : n
+        );
+      }
+      const collapsed = { ...s.collapsed };
+      delete collapsed[category];
+      return { notes, editingId: null, draft: null, activeCategory: category, selectedId: newId, collapsed };
+    });
+  };
+
+  // ---- delete ----
+  askDelete = (id) => this.setState({ confirmDeleteId: id });
+  cancelDelete = () => this.setState({ confirmDeleteId: null });
+  confirmDelete = (id) =>
+    this.setState((s) => ({
+      notes: s.notes.filter((n) => n.id !== id),
+      confirmDeleteId: null,
+    }));
+
+  // ---- coordinate menu ----
+  openCoordMenu = (seg, e) => {
+    e.stopPropagation();
+    const r = e.currentTarget.getBoundingClientRect();
+    const left = Math.min(r.left, window.innerWidth - 232);
+    this.setState({ coordMenu: { seg, left, top: r.bottom + 6 } });
+  };
+  closeCoordMenu = () => { if (this.state.coordMenu) this.setState({ coordMenu: null }); };
+  stopMenuClick = (e) => e.stopPropagation();
+
+  showToast = (msg) => {
+    this.setState({ toast: msg });
+    if (this._toastTimer) clearTimeout(this._toastTimer);
+    this._toastTimer = setTimeout(() => this.setState({ toast: null }), 3000);
+  };
+  coordShowMap = () => {
+    const s = this.state.coordMenu && this.state.coordMenu.seg;
+    if (!s) return;
+    this.setState({ coordMenu: null });
+    this.showToast(`Marker placed on the map — ${s.place} (${s.x}, ${s.y}).`);
+  };
+  coordShare = () => {
+    const s = this.state.coordMenu && this.state.coordMenu.seg;
+    if (!s) return;
+    this.setState({ coordMenu: null });
+    this.showToast(`Sent to chat: [${s.label}]`);
+  };
+
+  // ---- style helpers ----
+  navRow(active) {
+    return (
+      "display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%; padding:7px 8px; margin-bottom:1px; text-align:left; border:1px solid " +
+      (active ? "rgba(180,150,90,0.55)" : "transparent") +
+      "; border-radius:3px; background:" +
+      (active ? "rgba(74,62,38,0.55)" : "transparent") +
+      "; color:" + (active ? "#f0d78a" : "rgba(210,200,178,0.82)") +
+      "; font-family:'Cinzel',serif; font-weight:600; font-size:13px; letter-spacing:0.01em; cursor:pointer;"
+    );
+  }
+  countBadge(active) {
+    return (
+      "flex:none; min-width:20px; text-align:center; padding:1px 6px; border-radius:9px; font-family:'Spectral',serif; font-weight:600; font-size:11px; background:" +
+      (active ? "rgba(240,215,138,0.16)" : "rgba(0,0,0,0.32)") +
+      "; color:" + (active ? "#f0d78a" : "rgba(190,180,160,0.6)") + ";"
+    );
+  }
+  noteRow(selected) {
+    return (
+      "display:flex; align-items:center; gap:8px; width:100%; padding:6px 8px; margin:1px 0; text-align:left; border:1px solid " +
+      (selected ? "rgba(180,150,90,0.5)" : "transparent") +
+      "; border-radius:3px; background:" +
+      (selected ? "rgba(74,62,38,0.4)" : "transparent") +
+      "; color:" + (selected ? "#ecdcae" : "rgba(200,192,172,0.78)") +
+      "; font-family:'Spectral',serif; font-size:12.5px; cursor:pointer;"
+    );
+  }
+  categoryChipStyle(active) {
+    return active
+      ? "padding:5px 11px; border:1px solid rgba(180,150,90,0.7); border-radius:3px; background:rgba(74,62,38,0.8); color:#f0d78a; font-family:'Cinzel',serif; font-weight:600; font-size:12px; cursor:pointer;"
+      : "padding:5px 11px; border:1px solid rgba(150,120,70,0.24); border-radius:3px; background:rgba(0,0,0,0.22); color:rgba(190,180,160,0.66); font-family:'Cinzel',serif; font-size:12px; cursor:pointer;";
+  }
+  scopeBtnStyle(active) {
+    return active
+      ? "flex:1; padding:8px 6px; border:1px solid rgba(180,150,90,0.7); border-radius:3px; background:rgba(74,62,38,0.8); color:#f0d78a; font-family:'Cinzel',serif; font-weight:600; font-size:12.5px; cursor:pointer;"
+      : "flex:1; padding:8px 6px; border:1px solid rgba(150,120,70,0.22); border-radius:3px; background:rgba(0,0,0,0.22); color:rgba(190,180,160,0.62); font-family:'Cinzel',serif; font-size:12.5px; cursor:pointer;";
+  }
+
+  matches(n, q) {
+    if (!q) return true;
+    return (n.title + " " + n.body).toLowerCase().includes(q);
+  }
+
+  renderVals() {
+    const st = this.state;
+    const mod = this.mod;
+
+    const base = {
+      loading: st.loading,
+      panelOpen: st.panelOpen,
+      togglePanel: this.togglePanel,
+      toggleFromRail: this.togglePanel,
+      startNew: this.startNew,
+      closeCoordMenu: this.closeCoordMenu,
+      stopMenuClick: this.stopMenuClick,
+      toast: st.toast,
+      query: st.query,
+      onQuery: this.onQuery,
+      selectAll: this.selectAll,
+      railBtnStyle:
+        "display:flex; align-items:center; justify-content:center; width:38px; height:38px; border-radius:4px; cursor:pointer; border:1px solid " +
+        (st.panelOpen ? "rgba(180,150,90,0.6)" : "rgba(150,120,70,0.0)") +
+        "; background:" +
+        (st.panelOpen ? "linear-gradient(180deg, rgba(74,62,38,0.9), rgba(40,34,20,0.9))" : "transparent") +
+        "; color:" + (st.panelOpen ? "#f0d78a" : "rgba(200,190,165,0.7)") + ";",
+    };
+
+    if (st.loading || !mod) {
+      return {
+        ...base,
+        ctxCharacter: "", ctxZone: "",
+        categories: [], notes: [], showEmpty: false, newEditing: false,
+        allCount: 0, allRowStyle: this.navRow(true), allCountStyle: this.countBadge(true),
+        headingLabel: "All notes", headingCount: "", headingColor: "#e6c86a",
+        categoryChips: [],
+        coordMenuOpen: false,
+      };
+    }
+
+    const ctx = mod.CURRENT_CONTEXT;
+    const q = st.query.trim().toLowerCase();
+    const catMeta = {};
+    mod.CATEGORIES.forEach((c) => { catMeta[c.key] = c; });
+
+    const visible = st.notes.filter((n) => this.matches(n, q));
+
+    // left-pane category tree
+    const categories = mod.CATEGORIES.map((c) => {
+      const catNotes = visible.filter((n) => n.category === c.key);
+      const collapsed = !!st.collapsed[c.key];
+      const expanded = q ? true : !collapsed; // searching force-expands
+      const active = st.activeCategory === c.key;
+      return {
+        key: c.key,
+        label: c.label,
+        color: c.color,
+        count: catNotes.length,
+        active,
+        expanded,
+        empty: catNotes.length === 0,
+        headerStyle: this.navRow(active),
+        countStyle: this.countBadge(active),
+        chevronStyle: "transition:transform 0.15s ease; transform:rotate(" + (expanded ? "90deg" : "0deg") + ");",
+        onSelect: () => this.selectCategory(c.key),
+        onToggle: (e) => this.toggleCollapse(c.key, e),
+        items: catNotes.map((n) => ({
+          id: n.id,
+          title: n.title,
+          dotColor: mod.SCOPES[n.scope].color,
+          auto: mod.autoSurfaces(n, ctx),
+          style: this.noteRow(st.selectedId === n.id),
+          onClick: () => this.selectNote(n),
+        })),
+      };
+    });
+
+    // right-pane note list
+    let list = visible;
+    if (st.activeCategory) list = list.filter((n) => n.category === st.activeCategory);
+
+    const notes = list.map((n) => {
+      const scopeMeta = mod.SCOPES[n.scope];
+      const cat = catMeta[n.category] || { label: n.category, color: "#c9b48a" };
+      const auto = mod.autoSurfaces(n, ctx);
+      const selected = st.selectedId === n.id;
+      const segments = mod.parseBody(n.body).map((s, i) => {
+        if (s.type === "coord") {
+          return { key: n.id + "-" + i, isCoord: true, isText: false, label: s.label, onClick: (e) => this.openCoordMenu(s, e) };
+        }
+        return { key: n.id + "-" + i, isText: true, isCoord: false, value: s.value };
+      });
+      return {
+        id: n.id,
+        title: n.title,
+        catLabel: cat.label,
+        catColor: cat.color,
+        catBorder: cat.color + "70",
+        isGlobal: n.scope === "global",
+        isCharacter: n.scope === "character",
+        isZone: n.scope === "zone",
+        badgeText: n.target ? scopeMeta.label + " · " + n.target : scopeMeta.label,
+        autoSurface: auto,
+        segments,
+        isEditing: st.editingId === n.id,
+        notEditing: st.editingId !== n.id,
+        confirming: st.confirmDeleteId === n.id,
+        cardStyle:
+          "position:relative; padding:16px 15px 14px; background: linear-gradient(180deg, rgba(33,30,24,0.96), rgba(26,23,18,0.96)); border:1px solid " +
+          (selected ? "rgba(220,185,110,0.7)" : "rgba(150,120,70,0.26)") +
+          "; border-radius:3px; box-shadow: 0 5px 16px rgba(0,0,0,0.35), inset 0 1px 0 rgba(220,190,120,0.07)" +
+          (selected ? ", 0 0 0 1px rgba(220,185,110,0.35)" : "") + ";",
+        edit: () => this.startEdit(n.id),
+        askDelete: () => this.askDelete(n.id),
+        doDelete: () => this.confirmDelete(n.id),
+        cancelDelete: this.cancelDelete,
+      };
+    });
+
+    const activeMeta = st.activeCategory ? catMeta[st.activeCategory] : null;
+    const headingLabel = activeMeta ? activeMeta.label : "All notes";
+    const headingColor = activeMeta ? activeMeta.color : "#e6c86a";
+    const headingCount = list.length + (list.length === 1 ? " note" : " notes");
+
+    const allActive = st.activeCategory === null;
+    const showEmpty = list.length === 0 && st.editingId !== "new";
+    let emptyTitle = "No notes yet";
+    let emptyBody = "Keep crafting lists, legendary checklists and map markers close while you play.";
+    if (q) { emptyTitle = "No matches"; emptyBody = "Nothing matches “" + st.query.trim() + "”. Try another search."; }
+    else if (activeMeta) { emptyTitle = "Nothing in " + activeMeta.label; emptyBody = "This category has no notes yet. Add one to get started."; }
+
+    // draft / form
+    const d = st.draft || { title: "", body: "", category: "crafting", scope: "global", target: "" };
+    const showTarget = d.scope === "character" || d.scope === "zone";
+    const categoryChips = mod.CATEGORIES.map((c) => ({
+      key: c.key,
+      label: c.label,
+      style: this.categoryChipStyle(d.category === c.key),
+      onClick: () => this.setCategory(c.key),
+    }));
+
+    const formWrapStyle =
+      "padding:16px 15px; margin-bottom:12px; background:linear-gradient(180deg, rgba(38,34,26,0.97), rgba(28,25,19,0.97)); border:1px solid rgba(180,150,90,0.5); border-radius:3px; box-shadow:0 8px 22px rgba(0,0,0,0.4), inset 0 1px 0 rgba(220,190,120,0.1);";
+    const inputStyle =
+      "width:100%; padding:9px 11px; background:rgba(0,0,0,0.32); border:1px solid rgba(150,120,70,0.35); border-radius:3px; color:#ecdcae; font-size:14px; outline:none;";
+    const inputStyleMt = "margin-top:10px; " + inputStyle;
+    const textareaStyle =
+      "width:100%; margin-top:10px; padding:10px 11px; background:rgba(0,0,0,0.32); border:1px solid rgba(150,120,70,0.35); border-radius:3px; color:#cfc7b6; font-size:13.5px; line-height:1.55; outline:none; resize:vertical; min-height:92px;";
+
+    return {
+      ...base,
+      ctxCharacter: ctx.character,
+      ctxZone: ctx.zone,
+      categories,
+      notes,
+      showEmpty,
+      emptyTitle,
+      emptyBody,
+      newEditing: st.editingId === "new",
+
+      allCount: visible.length,
+      allRowStyle: this.navRow(allActive),
+      allCountStyle: this.countBadge(allActive),
+
+      headingLabel,
+      headingCount,
+      headingColor,
+
+      categoryChips,
+
+      // form bindings
+      draftTitle: d.title,
+      draftBody: d.body,
+      draftTarget: d.target,
+      showTarget,
+      targetPlaceholder: d.scope === "zone" ? "Map name (e.g. Diessa Plateau)" : "Character name (e.g. Kytalia Moonbind)",
+      onTitle: (e) => this.updateDraft("title", e.target.value),
+      onBody: (e) => this.updateDraft("body", e.target.value),
+      onTarget: (e) => this.updateDraft("target", e.target.value),
+      setScopeGlobal: () => this.setScope("global"),
+      setScopeCharacter: () => this.setScope("character"),
+      setScopeZone: () => this.setScope("zone"),
+      scopeBtnGlobal: this.scopeBtnStyle(d.scope === "global"),
+      scopeBtnCharacter: this.scopeBtnStyle(d.scope === "character"),
+      scopeBtnZone: this.scopeBtnStyle(d.scope === "zone"),
+      saveDraft: this.saveDraft,
+      cancelDraft: this.cancelDraft,
+      formWrapStyle, inputStyle, inputStyleMt, textareaStyle,
+      saveBtnStyle:
+        "padding:8px 16px; border:1px solid rgba(180,150,90,0.65); border-radius:3px; background:linear-gradient(180deg, rgba(74,62,38,0.95), rgba(44,37,22,0.95)); color:#f0d78a; font-family:'Cinzel',serif; font-weight:600; font-size:13px; cursor:pointer;",
+      ghostBtnStyle:
+        "padding:8px 14px; border:1px solid rgba(150,120,70,0.3); border-radius:3px; background:rgba(0,0,0,0.25); color:rgba(210,195,160,0.8); font-family:'Cinzel',serif; font-size:13px; cursor:pointer;",
+
+      // coord menu
+      coordMenuOpen: !!st.coordMenu,
+      coordMenuLabel: st.coordMenu ? st.coordMenu.seg.label : "",
+      coordMenuStyle: st.coordMenu
+        ? "position:fixed; z-index:70; left:" + st.coordMenu.left + "px; top:" + st.coordMenu.top + "px; width:220px; background:linear-gradient(180deg, rgba(30,27,21,0.99), rgba(18,16,12,0.99)); border:1px solid rgba(180,150,90,0.55); border-radius:3px; box-shadow:0 14px 38px rgba(0,0,0,0.6); overflow:hidden; animation:gw-pop 0.14s ease-out;"
+        : "display:none;",
+      coordShowMap: this.coordShowMap,
+      coordShare: this.coordShare,
+    };
+  }
+}
+</script>
+</body>
+</html>
