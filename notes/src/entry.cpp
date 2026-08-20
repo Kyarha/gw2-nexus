@@ -88,79 +88,110 @@ std::vector<char>& BufferFor(const notes::Note& note)
     return it->second;
 }
 
-// The panel body. Factored so the 003-06 theme can wrap it with a 9-slice frame
-// without reworking the note logic (AC5).
-void RenderPanel()
+// Card-list UI mode (slice 003-07), keyed by note id. A card is read-only by
+// default; `g_EditingId` names the one open in the inline editor, and
+// `g_ConfirmDeleteId` the one showing its delete-confirm strip. Both are UI-only
+// (never persisted) and are cleared when their note is committed/removed.
+std::string g_EditingId;
+std::string g_ConfirmDeleteId;
+
+// Render one note as a themed card (slice 003-07). Read-only by default (title +
+// body + coordinate), with a pencil that opens the inline editor and a trash that
+// opens a delete-confirm strip. The card fill/border/tack are drawn behind the
+// content via a draw-list channel split so the card sizes itself to its content
+// (ImGui 1.80 has no auto-resize child). On a confirmed delete, `to_delete` is
+// set to the note id for the caller to apply after the loop.
+void RenderNoteCard(const notes::Note& note,
+                    const shared::theme::Palette& pal,
+                    std::string& to_delete)
 {
-    if (!g_Store) { return; }
+    namespace th = shared::theme;
+    ImGui::PushID(note.id.c_str());
 
-    // One palette per frame, reused by the title bar, the primary button, and the
-    // coordinate accent below (avoids re-deriving gw2_palette() per widget).
-    const shared::theme::Palette pal = shared::theme::gw2_palette();
+    ImDrawList* dl      = ImGui::GetWindowDrawList();
+    const float pad     = 15.0f;
+    const float avail   = ImGui::GetContentRegionAvail().x;
+    const float inner_w = avail - pad * 2.0f;
+    const bool  editing = (g_EditingId == note.id);
 
-    // Native title bar (003-06): replaces ImGui's default bar (the window uses
-    // NoTitleBar). Icon + gold title + subtitle + hotkey pill + close, drawn by
-    // the shared theme. The close affordance lives here now.
-    static const std::string kHotkeyPill = std::string("HOTKEY  ") + kDefaultBind;
-    if (shared::theme::TitleBar("Notes", "Personal organiser",
-                                kHotkeyPill.c_str(), pal))
+    dl->ChannelsSplit(2);
+    dl->ChannelsSetCurrent(1); // foreground: content
+
+    ImGui::BeginGroup();
+    ImGui::Indent(pad);
+    ImGui::Dummy(ImVec2(0.0f, 6.0f)); // top padding (inside the indent)
+    ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + inner_w);
+
+    if (editing)
     {
-        g_PanelOpen = false;
-    }
-
-    // Primary action, sized up to read as the panel's main call-to-action (AC4
-    // toolbar row). Bronze fill comes from the themed Button colors; the gold
-    // label + extra frame padding make it prominent rather than a default button.
-    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(14.0f, 8.0f));
-    ImGui::PushStyleColor(ImGuiCol_Text, shared::theme::to_vec4(pal.button_text));
-    if (ImGui::Button("+  New note")) { g_Store->add(std::string{}); }
-    ImGui::PopStyleColor();
-    ImGui::PopStyleVar();
-    ImGui::Spacing();
-    ImGui::Separator();
-
-    std::string to_delete; // defer deletion until after the loop
-
-    // Scrollable note area only, so the scrollbar sits beside the notes rather
-    // than running the full window height across the fixed title bar and its
-    // close button. Transparent child bg lets the panel surface show through
-    // (no card-within-a-card).
-    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
-    ImGui::BeginChild("##notelist",
-                      ImVec2(0.0f, ImGui::GetContentRegionAvail().y), false);
-    for (const auto& note : g_Store->notes())
-    {
-        ImGui::PushID(note.id.c_str());
-
+        // Inline editor (v1.2 edit-form): the existing text buffer, committed on
+        // Save through the write-through store; Cancel discards the buffer.
         std::vector<char>& buf = BufferFor(note);
-        ImGui::InputTextMultiline(
-            "##text", buf.data(), buf.size(),
-            ImVec2(-1.0f, ImGui::GetTextLineHeight() * 3.0f));
-        // Commit on edit-commit (field lost focus after an edit): one durable
-        // write-through per committed edit rather than per keystroke.
-        if (ImGui::IsItemDeactivatedAfterEdit())
+        ImGui::InputTextMultiline("##edit", buf.data(), buf.size(),
+                                  ImVec2(inner_w, ImGui::GetTextLineHeight() * 4.0f));
+        if (ImGui::Button("Save"))
         {
             g_Store->edit(note.id, std::string(buf.data()));
+            g_EditingId.clear();
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel"))
+        {
+            g_EditBuffers.erase(note.id); // drop uncommitted edits
+            g_EditingId.clear();
+        }
+    }
+    else
+    {
+        // Action icons, right-aligned on the first row (pencil = edit, trash =
+        // toggle the delete-confirm strip).
+        const float icons_w = 28.0f * 2.0f + 4.0f;
+        ImGui::Dummy(ImVec2(inner_w - icons_w, 1.0f));
+        ImGui::SameLine();
+        if (th::IconButton("##edit", 28.0f, th::GlyphIcon::Pencil, pal))
+        {
+            g_EditingId = note.id;
+            g_ConfirmDeleteId.clear();
+        }
+        ImGui::SameLine(0.0f, 4.0f);
+        if (th::IconButton("##del", 28.0f, th::GlyphIcon::Trash, pal))
+        {
+            g_ConfirmDeleteId = (g_ConfirmDeleteId == note.id) ? std::string{}
+                                                               : note.id;
         }
 
-        // --- 003-02: optional coordinate --------------------------------------
-        // Show the stamped place (AC3) and offer capture/clear (AC1). A text-only
-        // note shows nothing but the "Stamp here" affordance (AC4).
+        // Title (first line) + body (the rest), split off-game (AC2).
+        const std::pair<std::string, std::string> tb =
+            notes::split_title_body(note.text);
+        if (tb.first.empty())
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, th::to_vec4(pal.text_muted));
+            ImGui::TextUnformatted("(empty note)");
+            ImGui::PopStyleColor();
+        }
+        else
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, th::to_vec4(pal.text_title));
+            ImGui::TextUnformatted(tb.first.c_str());
+            ImGui::PopStyleColor();
+        }
+        if (!tb.second.empty())
+        {
+            ImGui::PushStyleColor(ImGuiCol_Text, th::to_vec4(pal.text));
+            ImGui::TextUnformatted(tb.second.c_str());
+            ImGui::PopStyleColor();
+        }
+
+        // --- 003-02: optional coordinate (behaviour unchanged) ----------------
         if (note.coordinate)
         {
-            // Coordinates read in the theme's teal accent (mockup: links/coords
-            // are teal #7fd0d6), so the stamped place stands out natively (AC3).
-            ImGui::PushStyleColor(
-                ImGuiCol_Text, shared::theme::to_vec4(pal.accent_teal));
-            ImGui::TextUnformatted(notes::format_coordinate(*note.coordinate).c_str());
+            ImGui::PushStyleColor(ImGuiCol_Text, th::to_vec4(pal.accent_teal));
+            ImGui::TextUnformatted(
+                notes::format_coordinate(*note.coordinate).c_str());
             ImGui::PopStyleColor();
             ImGui::SameLine();
             if (ImGui::SmallButton("Clear")) { g_Store->clear_coordinate(note.id); }
         }
-        // "Stamp here" captures the current position (AC1). ImGui 1.80 has no
-        // BeginDisabled, so when the link isn't live we show greyed hint text
-        // instead of an active button — the player can't stamp a bogus
-        // (0,0)/map-0 value.
         const std::optional<notes::Coordinate> here = ReadCurrentCoordinate();
         if (here)
         {
@@ -175,10 +206,102 @@ void RenderPanel()
             ImGui::TextDisabled("Stamp here (no live position)");
         }
 
-        if (ImGui::Button("Delete")) { to_delete = note.id; }
+        // Delete-confirm strip (AC4): destructive action needs a second step.
+        if (g_ConfirmDeleteId == note.id)
+        {
+            ImGui::Dummy(ImVec2(0.0f, 6.0f));
+            ImGui::PushStyleColor(ImGuiCol_Text, th::to_vec4(pal.danger_text));
+            ImGui::TextUnformatted("Delete this note? This can't be undone.");
+            ImGui::PopStyleColor();
+            ImGui::PushStyleColor(ImGuiCol_Button, th::to_vec4(pal.danger_fill));
+            ImGui::PushStyleColor(ImGuiCol_ButtonHovered, th::to_vec4(pal.danger_line));
+            ImGui::PushStyleColor(ImGuiCol_ButtonActive, th::to_vec4(pal.danger_fill));
+            ImGui::PushStyleColor(ImGuiCol_Text, th::to_vec4(pal.danger_text_2));
+            if (ImGui::Button("Delete")) { to_delete = note.id; }
+            ImGui::PopStyleColor(4);
+            ImGui::SameLine();
+            if (ImGui::Button("Keep")) { g_ConfirmDeleteId.clear(); }
+        }
+    }
 
-        ImGui::Separator();
-        ImGui::PopID();
+    ImGui::PopTextWrapPos();
+    ImGui::Dummy(ImVec2(0.0f, 6.0f)); // bottom padding
+    ImGui::Unindent(pad);
+    ImGui::EndGroup();
+
+    // Card fill + border + tack, drawn behind the content over the full width.
+    const ImVec2 gmin = ImGui::GetItemRectMin();
+    const ImVec2 gmax = ImGui::GetItemRectMax();
+    const ImVec2 cmin(gmin.x - pad, gmin.y);
+    const ImVec2 cmax(gmin.x - pad + avail, gmax.y);
+    dl->ChannelsSetCurrent(0); // background
+    th::GradientRectFilled(dl, cmin, cmax,
+                           editing ? pal.form_top : pal.card_bg,
+                           editing ? pal.form_bottom : pal.card_bottom);
+    dl->AddRect(cmin, cmax,
+                th::to_u32(editing ? th::with_alpha(pal.button_border, 0.50)
+                                   : th::with_alpha(pal.trim_line, 0.26)),
+                3.0f);
+    if (!editing)
+    {
+        th::DrawTack(dl, (cmin.x + cmax.x) * 0.5f, cmin.y, pal);
+    }
+    dl->ChannelsMerge();
+
+    ImGui::PopID();
+    ImGui::Dummy(ImVec2(0.0f, 12.0f)); // gap between cards (v1.2 note-list gap)
+}
+
+// The panel body. Factored so the 003-06 theme can wrap it with a 9-slice frame
+// without reworking the note logic (AC5).
+void RenderPanel()
+{
+    if (!g_Store) { return; }
+
+    // One palette per frame, reused by the title bar, the primary button, and the
+    // cards below (avoids re-deriving gw2_palette() per widget).
+    const shared::theme::Palette pal = shared::theme::gw2_palette();
+
+    // Native title bar (003-06): replaces ImGui's default bar (the window uses
+    // NoTitleBar). Icon + gold title + subtitle + hotkey pill + close, drawn by
+    // the shared theme. The close affordance lives here now.
+    static const std::string kHotkeyPill = std::string("HOTKEY  ") + kDefaultBind;
+    if (shared::theme::TitleBar("Notes", "Personal organiser",
+                                kHotkeyPill.c_str(), pal))
+    {
+        g_PanelOpen = false;
+    }
+
+    // Primary action (AC3): a new note is created and opened in the inline editor
+    // at the TOP of the list (the list renders newest-first), never appended
+    // off-screen at the bottom.
+    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(14.0f, 8.0f));
+    ImGui::PushStyleColor(ImGuiCol_Text, shared::theme::to_vec4(pal.button_text));
+    if (ImGui::Button("+  New note"))
+    {
+        g_EditingId = g_Store->add(std::string{});
+        g_ConfirmDeleteId.clear();
+    }
+    ImGui::PopStyleColor();
+    ImGui::PopStyleVar();
+    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Spacing();
+
+    std::string to_delete; // defer deletion until after the loop
+
+    // Scrollable note area only, so the scrollbar sits beside the notes rather
+    // than running the full window height across the fixed title bar and its
+    // close button. Transparent child bg lets the panel surface show through.
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+    ImGui::BeginChild("##notelist",
+                      ImVec2(0.0f, ImGui::GetContentRegionAvail().y), false);
+    // Newest-first: the most recently added note (appended by the store) renders
+    // at the top, so New note lands in view (AC3).
+    const std::vector<notes::Note>& all = g_Store->notes();
+    for (auto it = all.rbegin(); it != all.rend(); ++it)
+    {
+        RenderNoteCard(*it, pal, to_delete);
     }
     ImGui::EndChild();
     ImGui::PopStyleColor();
@@ -187,6 +310,8 @@ void RenderPanel()
     {
         g_Store->remove(to_delete);
         g_EditBuffers.erase(to_delete);
+        if (g_ConfirmDeleteId == to_delete) { g_ConfirmDeleteId.clear(); }
+        if (g_EditingId == to_delete)       { g_EditingId.clear(); }
     }
 }
 

@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <utility>
 
 namespace notes {
 
@@ -42,5 +43,17 @@ struct Note {
 // precision is meaningless on the world map) alongside the map id, e.g.
 // "Map 15 — (12346, 6789)".
 std::string format_coordinate(const Coordinate& c);
+
+// Split a note's free-form text into a display (title, body) pair for the card
+// view (slice 003-07 AC2). Pure and UI-agnostic so it is unit-testable off-game;
+// the ImGui glue renders the title in the heading style and the body below it.
+//
+// Rules: the title is the first **non-empty** line, trimmed of surrounding
+// whitespace; the body is everything after that line, with the leading newline
+// consumed but interior formatting preserved. Leading blank lines are skipped
+// when choosing the title. An empty or all-whitespace note yields an empty
+// title and empty body (the caller shows a placeholder). A single-line note
+// yields that line as the title and an empty body.
+std::pair<std::string, std::string> split_title_body(const std::string& text);
 
 } // namespace notes

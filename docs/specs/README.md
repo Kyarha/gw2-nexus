@@ -23,6 +23,7 @@
 | [003-notes-mvp](003-notes-mvp/spec.md) | 003-04 — coordinate actions | DRAFT |  |
 | [003-notes-mvp](003-notes-mvp/spec.md) | 003-05 — context-aware notes (optional MVP convenience) | DRAFT |  |
 | [003-notes-mvp](003-notes-mvp/spec.md) | 003-06 — native-look theme layer | IN_PROGRESS (claude/notes-native-theme-0…) |  |
+| [003-notes-mvp](003-notes-mvp/spec.md) | 003-07 — note cards + core interactions | IN_PROGRESS (claude/notes-native-theme-0…) |  |
 
 ## Richer-skill selection audit (spec 096-05)
 

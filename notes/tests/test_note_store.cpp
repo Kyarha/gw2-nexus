@@ -370,3 +370,53 @@ TEST_CASE("format_coordinate renders map id + rounded continent coords (003-02 A
     CHECK(notes::format_coordinate(notes::Coordinate{0, 0.0f, 0.0f}) ==
           "Map 0 \xE2\x80\x94 (0, 0)");
 }
+
+// --- 003-07 AC2: title/body split for the card view --------------------------
+
+TEST_CASE("split_title_body derives a display title + body from note text (003-07 AC2)")
+{
+    using notes::split_title_body;
+
+    SUBCASE("first line is the title, the rest is the body")
+    {
+        auto [title, body] = split_title_body("Buy mats\nore x30\nleather x10");
+        CHECK(title == "Buy mats");
+        CHECK(body == "ore x30\nleather x10");
+    }
+    SUBCASE("a single-line note is all title, empty body")
+    {
+        auto [title, body] = split_title_body("just a reminder");
+        CHECK(title == "just a reminder");
+        CHECK(body.empty());
+    }
+    SUBCASE("the title is trimmed of surrounding whitespace")
+    {
+        auto [title, body] = split_title_body("   spaced title  \nbody line");
+        CHECK(title == "spaced title");
+        CHECK(body == "body line");
+    }
+    SUBCASE("leading blank lines are skipped when choosing the title")
+    {
+        auto [title, body] = split_title_body("\n\n  \nreal title\nreal body");
+        CHECK(title == "real title");
+        CHECK(body == "real body");
+    }
+    SUBCASE("interior body formatting is preserved")
+    {
+        auto [title, body] = split_title_body("Title\n\n  indented\nline");
+        CHECK(title == "Title");
+        CHECK(body == "\n  indented\nline");
+    }
+    SUBCASE("an empty note yields empty title and body")
+    {
+        auto [title, body] = split_title_body("");
+        CHECK(title.empty());
+        CHECK(body.empty());
+    }
+    SUBCASE("an all-whitespace note yields empty title and body")
+    {
+        auto [title, body] = split_title_body("   \n\t\n  ");
+        CHECK(title.empty());
+        CHECK(body.empty());
+    }
+}

@@ -174,6 +174,20 @@ TEST_CASE("theme: default palette matches the fidelity mockup tokens (AC4)")
     CHECK(p.accent_teal == Color{127, 208, 214, 255});
     // Danger red: #e8998a.
     CHECK(p.accent_danger == Color{232, 153, 138, 255});
+
+    // 003-07 note-card tokens (v1.2 redline).
+    CHECK(p.card_bg     == Color{33, 30, 24, 245});  // card-top #211e18 @ 0.96
+    CHECK(p.card_bottom == Color{26, 23, 18, 245});  // card-bottom #1a1712 @ 0.96
+    CHECK(p.form_top    == Color{38, 36, 33, 235});  // form-top #262421 @ 0.92
+    CHECK(p.form_bottom == Color{28, 25, 19, 235});  // form-bottom #1c1913 @ 0.92
+    CHECK(p.text_muted_2 == Color{210, 195, 160, 255}); // muted-2 #d2c3a0
+    CHECK(p.tack_light  == Color{240, 215, 138, 255}); // gold-btn #f0d78a
+    CHECK(p.tack_dark   == Color{138, 111, 46, 255});  // pin-dark #8a6f2e
+    CHECK(p.danger_line   == Color{200, 110, 90, 255}); // #c86e5a
+    CHECK(p.danger_fill   == Color{120, 40, 32, 230});  // #782820 @ 0.90
+    CHECK(p.danger_bg     == Color{60, 24, 20, 230});   // #3c1814 @ 0.90
+    CHECK(p.danger_text   == Color{232, 184, 172, 255}); // #e8b8ac
+    CHECK(p.danger_text_2 == Color{255, 216, 205, 255}); // #ffd8cd
     // Corner ornament stroke #caa85f, 30px bracket.
     CHECK(p.corner.stroke == Color{202, 168, 95, 255});
     CHECK(p.corner.size_px == doctest::Approx(30.0f));

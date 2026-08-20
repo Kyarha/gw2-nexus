@@ -64,7 +64,10 @@ struct Palette
 {
     // Surfaces
     Color panel_bg;      // v1.2 panel #191611 @ 0.90 (translucent overlay)
-    Color card_bg;       // rgba(33,30,24,0.96)
+    Color card_bg;       // v1.2 card-top #211e18 @ 0.96 (note card, gradient top)
+    Color card_bottom;   // v1.2 card-bottom #1a1712 @ 0.96 (note card, gradient bottom)
+    Color form_top;      // v1.2 form-top #262421 @ 0.92 (editor form, gradient top)
+    Color form_bottom;   // v1.2 form-bottom #1c1913 @ 0.92 (editor form, gradient bottom)
     Color input_bg;      // rgba(0,0,0,0.32)
     Color titlebar_bg;   // rgba(30,27,21,0.90)
 
@@ -79,6 +82,18 @@ struct Palette
     Color text_title;    // #ecdcae — card/section titles
     Color text_gold;     // #e6c86a — headings, primary trim
     Color text_muted;    // rgba(190,180,160,0.6)
+    Color text_muted_2;  // #d2c3a0 — icon-button glyphs (v1.2 muted-2)
+
+    // Note tack pin (v1.2 note-tack radial: gold-btn -> pin-dark)
+    Color tack_light;    // #f0d78a — tack highlight
+    Color tack_dark;     // #8a6f2e — tack shadow
+
+    // Danger (v1.2 delete-confirm strip + delete button)
+    Color danger_line;   // #c86e5a — confirm strip border (drawn @ ~40%)
+    Color danger_fill;   // #782820 — Delete button fill
+    Color danger_bg;     // #3c1814 — confirm strip background
+    Color danger_text;   // #e8b8ac — confirm copy
+    Color danger_text_2; // #ffd8cd — Delete button label
 
     // Interactive (primary button)
     Color button;        // rgba(74,62,38,0.9)
@@ -118,7 +133,10 @@ constexpr Palette gw2_palette()
     Palette p{};
 
     p.panel_bg    = {25, 22, 17, alpha8(0.90)}; // v1.2 panel #191611
-    p.card_bg     = {33, 30, 24, alpha8(0.96)};
+    p.card_bg     = {33, 30, 24, alpha8(0.96)}; // v1.2 card-top #211e18
+    p.card_bottom = {26, 23, 18, alpha8(0.96)}; // v1.2 card-bottom #1a1712
+    p.form_top    = {38, 36, 33, alpha8(0.92)}; // v1.2 form-top #262421
+    p.form_bottom = {28, 25, 19, alpha8(0.92)}; // v1.2 form-bottom #1c1913
     p.input_bg    = {0, 0, 0, alpha8(0.32)};
     p.titlebar_bg = {30, 27, 21, alpha8(0.90)};
 
@@ -135,10 +153,20 @@ constexpr Palette gw2_palette()
     p.corner.dot     = {230, 200, 106, 255}; // #e6c86a
     p.corner.size_px = 30.0f;
 
-    p.text       = {207, 199, 182, 255}; // #cfc7b6
-    p.text_title = {236, 220, 174, 255}; // #ecdcae
-    p.text_gold  = {230, 200, 106, 255}; // #e6c86a
-    p.text_muted = {190, 180, 160, alpha8(0.6)};
+    p.text        = {207, 199, 182, 255}; // #cfc7b6
+    p.text_title  = {236, 220, 174, 255}; // #ecdcae
+    p.text_gold   = {230, 200, 106, 255}; // #e6c86a
+    p.text_muted  = {190, 180, 160, alpha8(0.6)};
+    p.text_muted_2 = {210, 195, 160, 255}; // #d2c3a0
+
+    p.tack_light = {240, 215, 138, 255}; // #f0d78a
+    p.tack_dark  = {138, 111, 46, 255};  // #8a6f2e
+
+    p.danger_line   = {200, 110, 90, 255};        // #c86e5a
+    p.danger_fill   = {120, 40, 32, alpha8(0.90)}; // #782820
+    p.danger_bg     = {60, 24, 20, alpha8(0.90)};  // #3c1814
+    p.danger_text   = {232, 184, 172, 255};       // #e8b8ac
+    p.danger_text_2 = {255, 216, 205, 255};       // #ffd8cd
 
     p.button         = {74, 62, 38, alpha8(0.9)};
     p.button_hovered = {90, 74, 44, alpha8(0.95)};
