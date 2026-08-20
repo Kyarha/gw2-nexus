@@ -65,6 +65,11 @@
 **Resolution trigger:** First Notes UI spec that ships styled panel art. Run the spike; if runtime-by-ID works, use the real texture, else original art. Record the final choice via an ADR so it binds every addon.
 **Resolved by:** [ADR-0004: GW2 art-asset sourcing policy for all Nexus addons](decisions/adr-0004-gw2-art-asset-sourcing.md).
 
+### Decision: Map-tag / auto-surface presentation (003-05)
+**Deferred:** 003-05 shipped map-tagging + "notes greet you on arrival" auto-surface, and the behaviour is **useful and kept** — but its *presentation* confused the owner in the first in-game run (2026-08-20). Two concrete problems: (a) the tag renders as a **raw map id** (`Map tag: 24`) instead of the zone **name**, which means nothing to a human; (b) the UI gives **no hint of what map-tagging does** (that it auto-shows the note when you enter that map), and it reads as redundant next to a coordinate on the same map. Resolving (a) needs a map-id→name lookup — the same GW2 `/v2/maps` REST dependency deferred for the clickable-waypoint work ([ADR-0005](decisions/adr-0005-coordinate-action-mechanism.md)), so it is a known "later", not an oversight. This is a **design question**, not a logic bug — the feature works (AC1–AC5 met).
+**Direction (leaning):** keep auto-surface; at the redline, show the map **name** + a one-line affordance hint ("auto-shows here"), and make map-tagging visually distinct from the precise coordinate so they don't read as duplicates.
+**Resolution trigger:** the one v1.2 Notes design-redline pass (after 003-04/05 + categories land), where map-tag presentation is designed alongside the note-card layout. If the `/v2/maps` name lookup is pulled in, record it via an ADR (it adds the REST dependency the MVP has so far avoided). See the 003-05 deviation log.
+
 ### Decision: Legendary recipe-tree data source
 **Deferred:** Mystic Forge / legendary assembly steps are not in the GW2 recipe API; a maintained tree must be bundled. Source (gw2efficiency / gw2treasures / datawars2) and refresh cadence undecided.
 **Resolution trigger:** First Legendary / Bank tracker spec.
