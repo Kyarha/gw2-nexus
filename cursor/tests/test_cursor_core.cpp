@@ -1,11 +1,11 @@
 // cursor-core unit tests (doctest) — the off-game, pure-logic surface of the
-// Cursor Finder addon (slice 004-01).
+// Cursor Finder addon (slices 004-01 + 004-02).
 //
-// These cover: settings defaults (AC6/AC7), JSON round-trip + write-through
-// durability (AC6), schema versioning + forward migration (AC7), and pointer
-// geometry centering (AC8). Rendering, keybind, QuickAccess, and the live
-// preview (AC1-AC5 Windows/ImGui surface) are the manual in-game portion and are
-// NOT asserted here.
+// These cover: settings defaults, JSON round-trip + write-through durability,
+// schema versioning + forward migration (v1->v3), field clamping, colour hex
+// round-trip, Reset-to-defaults, and pointer geometry centering. The Windows/
+// ImGui surface (rendering, keybind, QuickAccess, panel, live preview, textures)
+// is the manual in-game portion and is NOT asserted here.
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
 
@@ -319,7 +319,7 @@ TEST_CASE("out-of-range size/opacity/fill-opacity are clamped on read (004-02)")
         out << R"({"schema_version":2,"size_px":9999})";
     }
     cursor::CursorStore hi(tmp.path);
-    CHECK(hi.settings().size_px == cursor::kSizeMax);          // 9999 -> 180
+    CHECK(hi.settings().size_px == cursor::kSizeMax);          // 9999 -> 100
 }
 
 // --- 004-02 AC7: Reset to defaults --------------------------------------------

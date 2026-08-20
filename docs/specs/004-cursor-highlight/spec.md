@@ -174,10 +174,11 @@ appearance) and **Rules** (always-on → combat/movement-gated), happy Path firs
   its own and stands up the whole addon skeleton + `cursor-core`.
 - **004-02 (Interface axis — full appearance)** — the mockup's **APPEARANCE**
   block: the **5-preset style picker**, **Colour**, **Size**, **Opacity**,
-  **Fill centre** + **Fill opacity** + **Fill colour**, and **Reset to
-  defaults**, all persisted. Bundles the PNG art set (rasterized from the five
-  `overlay-*.svg`) and resolves the **layered-recolor mechanism** (A2). This is
-  the "customizable" half of UC-14.
+  **Outline** (toggle + colour — a divergence from the mockup's fixed dark
+  outline), **Fill centre** + **Fill opacity** + **Fill colour** + **Fill size**,
+  and **Reset to defaults**, all persisted. Bundles the PNG art set (rasterized
+  from the five `overlay-*.svg`, embedded and loaded from memory) and resolves the
+  **layered-recolor mechanism** (A2). This is the "customizable" half of UC-14.
 - **004-03 (Rules axis — combat- and movement-aware visibility)** — the mockup's
   **Show overlay** matrix: per combat state (**Out of combat** / **In combat**),
   choose **Always / While moving / Never**, via the `UiState` combat bit (A3) and

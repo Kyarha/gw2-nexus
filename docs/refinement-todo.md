@@ -122,3 +122,19 @@ building.
 tracking, or after 004-02 is validated on a native-Windows client and the
 in-frame latency is judged unacceptable there (not just under CrossOver). Likely
 its own slice; may warrant an ADR (overlay vs hardware-cursor architectures).
+## Cursor Finder — debounce settings write-through during slider drags
+
+**Deferred (LOW-MEDIUM, from 004-02 independent review):** RenderPanel calls
+`g_Store->set(s)` every frame the panel is open (cursor/src/entry.cpp). set() is
+write-through and only persists on an actual change — but while dragging a slider
+(Size / Opacity / Fill size / Fill opacity) the value changes every frame, so
+the store performs an atomic temp-file-write + rename ~60x/second for the whole
+drag. Correct and durable, but needless disk churn.
+
+**Fix when convenient:** keep edits in the in-memory working copy while an ImGui
+item is active and flush once on release (e.g. gate the write on
+`!ImGui::IsAnyItemActive()`, or track a dirty flag and persist when interaction
+ends). Unload already does a final flush, so durability is preserved.
+
+**Resolution trigger:** next time cursor/src/entry.cpp is touched, or if disk I/O
+is ever a concern. Not blocking 004-02 (reviewer: ready to land).
