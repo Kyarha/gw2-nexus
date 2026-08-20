@@ -3,63 +3,57 @@ slice: 003-06 — native-look theme layer
 pass: arch
 verdict: pass
 reviewer: jig:reviewer
-reviewed_at: 2026-08-19T23:25:11Z
-prompt_source: review.py arch-review ... --richer-skill none
+reviewed_at: 2026-08-20T16:20:11Z
+prompt_source: review.py arch-review ... --richer-skill none (re-review, final code)
 substrate: shown
 applied_skill: none
-shown_candidates: [access:speculative, agent-development:speculative, build-mcp-app:speculative, build-mcp-server:speculative, build-mcpb:speculative, claude-automation-recommender:speculative, claude-md-improver:speculative, command-development:speculative, configure:speculative, content-fidelity:speculative, cutline:speculative, design-eval:speculative, eval-authoring:speculative, example-command:speculative, example-skill:speculative, frontend-design:speculative, hook-development:speculative, math-olympiad:speculative, mcp-integration:speculative, playground:speculative, plugin-settings:speculative, plugin-structure:speculative, release-check:speculative, release-slate:speculative, scope-audit:speculative, servo:agent-loop:speculative, servo:autonomy-readiness:speculative, servo:edd-suitability:speculative, servo:execution-planner:speculative, servo:heartbeat:speculative, servo:oracle-hook:speculative, servo:quality-gate:speculative, servo:scaffold-init:speculative, servo:spec-oracle:speculative, session-report:speculative, shape-release:speculative, skill-creator:speculative, skill-development:speculative, writing-hookify-rules:speculative]
+shown_candidates: [design-review:high-confidence, access:speculative, agent-development:speculative, build-mcp-app:speculative, build-mcp-server:speculative, build-mcpb:speculative, build-to-redline:speculative, claude-automation-recommender:speculative, claude-md-improver:speculative, command-development:speculative, configure:speculative, content-fidelity:speculative, cutline:speculative, design-brief:speculative, design-eval:speculative, design-tweaks:speculative, eval-authoring:speculative, example-command:speculative, example-skill:speculative, frontend-design:speculative, hook-development:speculative, math-olympiad:speculative, mcp-integration:speculative, open:speculative, playground:speculative, plugin-settings:speculative, plugin-structure:speculative, redline-request:speculative, release-check:speculative, release-slate:speculative, scope-audit:speculative, servo:agent-loop:speculative, servo:autonomy-readiness:speculative, servo:edd-suitability:speculative, servo:execution-planner:speculative, servo:heartbeat:speculative, servo:oracle-hook:speculative, servo:quality-gate:speculative, servo:scaffold-init:speculative, servo:spec-oracle:speculative, session-report:speculative, shape-release:speculative, skill-creator:speculative, skill-development:speculative, snapshot:speculative, writing-hookify-rules:speculative]
 ---
 
-## Arch pass — slice 003-06 native-look theme layer
+## Arch pass (re-review, final code) — slice 003-06 native-look theme layer
 
 **VERDICT: pass**
 
-The change lands a new `shared/theme` module exactly where `docs/architecture.md:93-99`
-forward-references it, and preserves the one-directional `notes → shared` boundary
-(ADR-0001) with no reverse or addon-to-addon coupling. Layering is clean: ImGui-free POD
-tokens (`theme.h`) + pure-C++17 geometry (`nine_slice`) compile and unit-test off-game in
-`shared-core`, while the ImGui glue is isolated in header-only `theme_imgui.h` pulled only
-into the Windows DLL. The public surface is stateless free-functions with defaultable
-`Palette`/`Metrics` args — a reusable shared boundary, not premature abstraction. No
-missing contract artifacts (the project owns no external caller-facing API per
-`architecture.md:141-156`).
-
-Boundary confirmation: `shared/CMakeLists.txt:10-13` compiles only `nine_slice.cpp` into
-`shared-core`; `test_theme.cpp:12-13` includes only `theme/nine_slice.h` + `theme/theme.h`
-(never `theme_imgui.h`); `theme_imgui.h:18` is the sole `#include "imgui.h"`, consumed only
-by the Windows DLL (`entry.cpp:29`). The ImGui-free split holds.
+The change preserves documented module boundaries cleanly: `shared/theme` splits into
+ImGui-free pure-C++17 data/geometry (`theme.h`, `nine_slice.h/.cpp`) that unit-tests
+off-game and a Windows-only header-only ImGui adapter (`theme_imgui.h`) pulled only into
+the addon DLL — the layering `architecture.md` commits to, enforced by `CMakeLists.txt`
+(only `nine_slice.cpp` enters `shared-core`). `architecture.md`'s theme-module line was
+updated in the same change-set, and the theme is a stack-scoped, non-global re-skin. The
+concerns below are cohesion/leanness nits and one spec-traceable observation, none blocking.
 
 ### Strengths
-- `theme.h:14-16` + `theme_imgui.h` — ImGui-free token layer split from header-only ImGui
-  glue keeps `shared-core` off-game-testable and confines the ImGui dependency to the
-  addon DLL; correct layering across the shared boundary.
-- `nine_slice.h:56-72` — explicit written contract (corner/edge/degenerate behavior,
-  divide-by-zero guard) for pure geometry, with the ImGui adapter reduced to a thin
-  `AddImage` loop; computable geometry cleanly separated from render.
-- `theme_imgui.h:38-42`, `entry.cpp:182-197` — `ThemeScope` returns push counts so
-  push/pop stays symmetric at the call site; `End`/`PopPanelStyle` called unconditionally,
-  so the shared ImGui style stack is never left unbalanced.
+- `theme.h:1-13` — ImGui-free token layer (plain `Color`/`Palette`/`Metrics`) is the right
+  boundary: compile-time constexpr data, adapter converts to `ImU32`/`ImVec4` at the draw
+  site, tokens testable on macOS/clang.
+- `shared/CMakeLists.txt:10-13` — only `theme/nine_slice.cpp` enters `shared-core`;
+  `theme_imgui.h` stays out of the off-game lib/tests. On-game/off-game split enforced by
+  the build, not just convention.
+- `theme_imgui.h` `ThemeScope` — returning exact push counts keeps push/pop symmetric.
 
-### Nits
-- `theme_imgui.h:70,82` — `colors = 17` / `vars = 8` hand-maintained literals must match
-  the `Push*` calls; drift silently unbalances the style stack, corrupting the ImGui
-  context Nexus shares across every addon — the exact global-style contamination AC1/AC5
-  warns against. Prefer a local incrementing counter.
-- `theme_imgui.h:166-181` — `DrawNineSlice` (textured path) has no live caller
-  (`entry.cpp` invokes only `DrawThemedFrame`; the texture-by-ID spike is unresolved), so
-  the glue ships unvalidated until the spike lands. Spec-sanctioned as AC2's optional
-  enhancement, not blocking.
-- `entry.cpp:128` — constructs a full `gw2_palette()` per coordinate-bearing note per
-  frame just to read `accent_teal`; hoist once alongside `pal` at line 180.
+### Nits (non-blocking)
+- **`theme_imgui.h` TitleBar document glyph** — the shared `TitleBar` bakes a Notes-specific
+  document glyph into chrome advertised as "reusable chrome for every addon." It's the one
+  spot where the shared boundary carries an addon-specific visual; a Markers/tracker adopter
+  would inherit the wrong icon. Defensible as the first/only consumer (parameterizing an icon
+  callback now, with one caller, would itself be premature), but the reusability claim is
+  slightly oversold. Generalize (icon param/callback) when the second addon adopts — not before.
+- **`theme_imgui.h` title-bar constants** — bar height 44, icon 30, paddings, title/subtitle
+  scale factors are inline magic numbers while `Metrics` exists to centralize AC4 spacing
+  tokens (AC4 lists a "title-bar padding" token). Design tokens split between `Metrics` and
+  inline literals. The `const Metrics& /*m*/` param is unused.
+- **`nine_slice` textured path has no runtime caller** — `compute_nine_slice`/`DrawNineSlice`
+  are built + unit-tested but the default frame uses primitive `AddRect` rings; the textured
+  path is gated behind the unproven Nexus texture-by-ID spike. Spec-mandated (AC2 names 9-slice
+  "the border mechanism" + DoD off-game-geometry coverage), not implementer over-engineering.
 
 ### Reconciliation notes
-- `docs/architecture.md:93-99` still describes theme as "GW2-native ImGui styling" and
-  not-yet-present. Reconciliation should mark theme present and note its actual shape:
-  ImGui-free tokens + header-only ImGui glue, so the off-game-testable split is documented
-  for the next addon (Markers/tracker) that consumes it.
-- Open question (non-blocking): AC2 frames 9-slice as "the border mechanism," yet the
-  default shippable path draws primitive concentric rings (`DrawThemedFrame`) and never
-  routes through `compute_nine_slice`. Matches the spec's own AC4 "primitive" resolution,
-  but record the divergence so a later reader doesn't expect the default frame to be
-  9-sliced.
-- Nits above are non-blocking and belong in the deviation log rather than gating REVIEWED.
+- AC2 frames 9-slice as "the border mechanism," but the shipped default (`DrawThemedFrame`)
+  draws concentric primitive rects + corner filigree and never routes through
+  `compute_nine_slice`. The nine-slice module is dead code from a caller's perspective, wired
+  only for the optional runtime-texture enhancement the open spike gates. Log the
+  mechanism-vs-default relationship explicitly.
+- The `TitleBar` hardcoded glyph is the single addon-specific element in otherwise
+  addon-agnostic shared chrome; flag for generalization when the second addon adopts.
+- Open question: should title-bar dimensions migrate into `Metrics` for one source of truth,
+  or are they intentionally presentation-only constants kept out of the token struct?

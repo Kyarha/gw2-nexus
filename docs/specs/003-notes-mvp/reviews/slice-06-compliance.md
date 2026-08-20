@@ -3,51 +3,53 @@ slice: 003-06 — native-look theme layer
 pass: compliance
 verdict: pass
 reviewer: jig:reviewer
-reviewed_at: 2026-08-19T23:25:40Z
-prompt_source: review.py implementation ...
+reviewed_at: 2026-08-20T16:20:59Z
+prompt_source: review.py implementation ... (re-review, final code)
 ---
 
-## Compliance pass — slice 003-06 native-look theme layer
+## Compliance pass (re-review, final code) — slice 003-06 native-look theme layer
 
 **VERDICT: pass**
 
-The theme layer meets AC1–AC5 and the AC6 no-bundled-art baseline. The ImGui-free core
-(`theme.h` tokens, `nine_slice` geometry) is cleanly separated and unit-tested off-game;
-palette/metrics values match both the AC4 table and the committed mockup (spot-checked:
-panel fill, bronze border, corner filigree stroke 1.5 / accent 1.2 / dot r1.8, primary
-button, teal accent, body text). The 9-slice tests are meaningful and non-vacuous — they
-assert concrete computed extents/UVs and exercise real edge cases (tiny-panel proportional
-scaling, zero-source divide-by-zero guard, gap-free tiling); none would pass with the
-feature deleted. The Notes reskin is correctly stack-scoped (17 colors + 8 vars
-pushed/popped symmetrically, no early-return leak), re-skinning only our window without
-mutating global style (AC5); `RenderPanel`'s note logic is untouched (AC3).
+The slice substantively meets AC1–AC6. `shared/theme` delivers an ImGui-free token layer
+(`theme.h`) plus a stack-scoped ImGui adapter (`theme_imgui.h`) reusable by any addon (AC1);
+correct, well-tested 9-slice geometry with a primitive default frame and optional textured
+path (AC2); the Notes panel is re-skinned through the shared theme without rewriting note
+logic (AC3); token values are faithfully transcribed from the mockup and verified by
+non-vacuous unit tests (AC4); the theme is stack-scoped so it never mutates global style
+(AC5); and no ArenaNet art is bundled — pure primitives (AC6). Hex-to-RGB and `alpha8`
+rounding are correct; the nine-slice inset math (proportional corner shrink, zero-source
+guard) is sound and its tests would fail if the feature were removed. Remaining gaps fall
+inside the DoD's explicitly-deferred carve-outs (typeface, exact box-shadow falloff) and are
+reconciliation-worthy, not AC-breaking; the in-game screenshot / design-eval hard gate is the
+manual portion and cannot be judged from code.
 
-### Specific issues (fidelity gaps — within ImGui-approximation latitude)
-- `theme.h:41-47` — `FrameRings` models only 4 of the 5 rings AC4 lists; the inner
-  vignette `rgba(0,0,0,0.6)` is omitted (silently absent rather than deferred).
-- `theme.h:82` / `theme_imgui.h:63` — button hover modeled as a brighter fill
-  (`button_hovered`), but the mockup's hover (`Notes Overlay.dc.html:89`) changes only
-  border→`rgba(220,185,110,0.85)` and text→`#ffe89e`; the hover text/trim `#ffe89e` isn't
-  in the palette.
-- `notes/src/entry.cpp:259-273` — `AddonDefinition` carries no ArenaNet
-  copyright/trademark notice. AC6 requires it in the release; no bundled art yet so the
-  obligation is release-time, but nothing in the deliverable satisfies it.
-- `theme_imgui.h:110-119` — ring stacking draws `separator` (near-black) outermost, then
-  `bronze_band`, then `outer_glow`, inverting AC4's stated outer→inner order (bronze band
-  outermost). Cosmetic; the in-game design-eval is the fidelity authority.
+### Specific issues (non-blocking)
+- `notes/src/entry.cpp:42` — stale `TODO(003-06)` ("replace with a themed Notes icon loaded
+  via Textures_*") left unresolved by the slice it's tagged for; the toolbar still uses
+  built-in `ICON_NEXUS`. Not an explicit AC — but the tag should be re-scoped/deferred with
+  rationale rather than implying this slice delivers it. (Medium, engineering-practices)
+- `shared/theme/theme.h:41-47` — `FrameRings` omits the AC4 "inner vignette `rgba(0,0,0,0.6)`"
+  token; only 4 of the 5 documented frame rings represented. Arguably within the DoD's "exact
+  box-shadow falloff" non-target, but a distinct named AC4 token. (Low/Medium)
+- `shared/theme/theme_imgui.h` DrawThemedFrame — frame-ring draw order inverts the mockup's
+  outer→inner stack (`separator` outermost, `outer_glow` innermost), contradicting the
+  field-comment semantics. Within the deferred carve-out.
 
 ### Reconciliation notes
-- **Gate concern:** frontmatter sets `design_review: true` / `arch_review: true` /
-  `frame_review: true`, but the DoD's load-bearing fidelity hard gate (design-eval
-  screenshot vs. mockup) and the required in-game screenshot are still `_TBD at
-  implementation._`, and no design-eval artifact exists (only the pre-implementation
-  frame-critique). The design-eval must run and the screenshot be recorded before
-  REVIEWED; the `design_review: true` flag is currently ahead of its evidence.
-- Record the deliberate AC4 approximations as deviations: (1) inner-vignette ring not
-  drawn; (2) hover styling reduced to a fill change; (3) serif typeface/weight/spacing
-  deferred to the separate serif-bundling enhancement (already flagged in AC4 /
-  frame-critique — carry into the log).
-- The optional textured 9-slice path (`DrawNineSlice`) is implemented but unreachable
-  (Nexus texture-by-ID spike still open); note as an honestly-deferred mechanism, not
-  dead-code debt. The `TODO(003-06)` themed-icon note at `entry.cpp:41` remains open and
-  should be tracked.
+- AC4 frame rings: draw order deviates from the mockup's outer→inner ordering, and the
+  inner-vignette ring is not implemented — record both as deliberate approximations under the
+  DoD's "exact box-shadow falloff" non-target.
+- Typeface / weight / letter-spacing remain deferred per the frame-critique resolution
+  (built-in ProggyClean atlas) — confirm logged as a lightweight decision at reconciliation.
+- AC6 copyright/trademark notice: not in the addon Description, but this is an umbrella build
+  (`Provider = UP_None`, no release) shipping zero ArenaNet art, so the requirement is
+  release-time — record as a release gate, not a code gap.
+- DoD checkboxes unchecked, deviation log / in-game screenshot still TBD (expected
+  pre-reconciliation). The `design_review: true` hard gate needs the design-eval screenshot
+  evidence in the deviation log — DEFERRED to the owner's later design redline (see
+  docs/inbox.md 2026-08-20); do not attest fidelity before then.
+- Coverage note: `shared-core` now carries `atomic_file.cpp` but the persistence helper is
+  exercised only transitively via `notes-core-tests`; `shared-core-tests` covers
+  theme/nine-slice only. Not a regression for this slice, but the shared persistence code has
+  no dedicated shared-level test.
