@@ -232,6 +232,10 @@ toggle.
    dropped for v1.0 (one shared profile). Kept for the decision trail. *(Data)*
 5. [004-05 — pointer confinement](slice-05-clip-cursor.md) — `ClipCursor()` per
    combat state + freeze-after-drag, disciplined release. *(DEFERRED; input-behavior)*
+6. [004-06 — design fidelity](slice-06-design-fidelity.md) — `build-to-redline`
+   fidelity pass on the shipped Cursor Settings panel: resolve → validate → map
+   colours → score vs reference render → close in-scope deltas. *(post-004-02;
+   styling only)*
 
 ## Sources
 

@@ -28,6 +28,7 @@
 | [004-cursor-highlight](004-cursor-highlight/spec.md) | 004-03 — combat & movement visibility | DRAFT |  |
 | [004-cursor-highlight](004-cursor-highlight/spec.md) | 004-04 — per-character settings | ABANDONED |  |
 | [004-cursor-highlight](004-cursor-highlight/spec.md) | 004-05 — pointer confinement (clip cursor) + freeze-after-drag | DEFERRED |  |
+| [004-cursor-highlight](004-cursor-highlight/spec.md) | 004-06 — design fidelity (build-to-redline) | DRAFT | fidelity pass on shipped 004-02 panel; styling only |
 
 ## Deferred slices
 
