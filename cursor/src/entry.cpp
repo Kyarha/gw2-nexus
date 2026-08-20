@@ -107,6 +107,24 @@ ImU32 FillTint(const cursor::Rgb& c, int fill_opacity_pct, int opacity_pct)
     return IM_COL32(c.r, c.g, c.b, a);
 }
 
+// The pointer position to anchor the marker on. Prefer the OS-instantaneous
+// cursor (GetCursorPos -> client space) — it matches the hardware arrow the
+// compositor draws — over ImGui's event-driven io.MousePos, which can visibly
+// TRAIL the pointer under CrossOver/Wine input delivery (the marker eases behind
+// the arrow, then catches up). On native Windows the two agree, so this is a
+// no-op there; it only helps the delayed-event path. Falls back to ImGui's mouse
+// if the window or mapping is unavailable.
+ImVec2 CurrentPointer()
+{
+    HWND hwnd = ::GetForegroundWindow();
+    POINT p;
+    if (hwnd && ::GetCursorPos(&p) && ::ScreenToClient(hwnd, &p))
+    {
+        return ImVec2(static_cast<float>(p.x), static_cast<float>(p.y));
+    }
+    return ImGui::GetMousePos();
+}
+
 // --- marker drawing ----------------------------------------------------------
 
 // Fallback procedural ring (004-01 look) when a preset texture is not ready yet:
@@ -307,7 +325,7 @@ void AddonRender()
         {
             // Anchor on the OS cursor hotspot — the true click point UC-14 needs
             // (AC2). The core geometry keeps the marker centered on it.
-            const ImVec2 mouse = ImGui::GetMousePos();
+            const ImVec2 mouse = CurrentPointer();
             // Foreground draw list = above the addon's own windows; background =
             // below them ("Show above Nexus windows").
             ImDrawList* dl = s.draw_above_windows ? ImGui::GetForegroundDrawList()
