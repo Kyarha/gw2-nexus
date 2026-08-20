@@ -143,22 +143,27 @@ void RenderNoteCard(const notes::Note& note,
     }
     else
     {
-        // Action icons, right-aligned on the first row (pencil = edit, trash =
-        // toggle the delete-confirm strip).
-        const float icons_w = 28.0f * 2.0f + 4.0f;
-        ImGui::Dummy(ImVec2(inner_w - icons_w, 1.0f));
-        ImGui::SameLine();
-        if (th::IconButton("##edit", 28.0f, th::GlyphIcon::Pencil, pal))
+        // Action icons (pencil = edit, trash = toggle delete-confirm), placed by
+        // explicit screen coords so they sit inside the right padding — ImGui's
+        // SameLine spacing made the row drift past the card border.
+        const float icon = 26.0f;
+        const float igap = 4.0f;
+        const ImVec2 irow = ImGui::GetCursorScreenPos();
+        const float  ix   = irow.x + inner_w - (icon * 2.0f + igap);
+        ImGui::SetCursorScreenPos(ImVec2(ix, irow.y));
+        if (th::IconButton("##edit", icon, th::GlyphIcon::Pencil, pal))
         {
             g_EditingId = note.id;
             g_ConfirmDeleteId.clear();
         }
-        ImGui::SameLine(0.0f, 4.0f);
-        if (th::IconButton("##del", 28.0f, th::GlyphIcon::Trash, pal))
+        ImGui::SetCursorScreenPos(ImVec2(ix + icon + igap, irow.y));
+        if (th::IconButton("##del", icon, th::GlyphIcon::Trash, pal))
         {
             g_ConfirmDeleteId = (g_ConfirmDeleteId == note.id) ? std::string{}
                                                                : note.id;
         }
+        // Continue the title/body below the icon row.
+        ImGui::SetCursorScreenPos(ImVec2(irow.x, irow.y + icon + 4.0f));
 
         // Title (first line) + body (the rest), split off-game (AC2).
         const std::pair<std::string, std::string> tb =
@@ -242,10 +247,6 @@ void RenderNoteCard(const notes::Note& note,
                 th::to_u32(editing ? th::with_alpha(pal.button_border, 0.50)
                                    : th::with_alpha(pal.trim_line, 0.26)),
                 3.0f);
-    if (!editing)
-    {
-        th::DrawTack(dl, (cmin.x + cmax.x) * 0.5f, cmin.y, pal);
-    }
     dl->ChannelsMerge();
 
     ImGui::PopID();
