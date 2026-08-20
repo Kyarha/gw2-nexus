@@ -1,5 +1,9 @@
 #include "core/cursor_store.h"
 
+#include <cstdint>
+#include <optional>
+#include <string>
+#include <string_view>
 #include <utility>
 
 #include <nlohmann/json.hpp>
@@ -11,6 +15,75 @@ namespace cursor {
 using nlohmann::json;
 
 namespace {
+
+// --- colour <-> "#rrggbb" -----------------------------------------------------
+
+std::string to_hex(const Rgb& c)
+{
+    static const char* d = "0123456789abcdef";
+    std::string s = "#______";
+    const std::uint8_t ch[3] = {c.r, c.g, c.b};
+    for (int i = 0; i < 3; ++i)
+    {
+        s[1 + i * 2] = d[(ch[i] >> 4) & 0xF];
+        s[2 + i * 2] = d[ch[i] & 0xF];
+    }
+    return s;
+}
+
+// Parse "#rrggbb" (case-insensitive). std::nullopt on any malformation so the
+// caller keeps the field's default rather than throwing (corrupt-file contract).
+std::optional<Rgb> from_hex(std::string_view s)
+{
+    if (s.size() != 7 || s[0] != '#') { return std::nullopt; }
+    auto nib = [](char c) -> int {
+        if (c >= '0' && c <= '9') { return c - '0'; }
+        if (c >= 'a' && c <= 'f') { return c - 'a' + 10; }
+        if (c >= 'A' && c <= 'F') { return c - 'A' + 10; }
+        return -1;
+    };
+    int v[6];
+    for (int i = 0; i < 6; ++i)
+    {
+        v[i] = nib(s[1 + i]);
+        if (v[i] < 0) { return std::nullopt; }
+    }
+    return Rgb{static_cast<std::uint8_t>(v[0] * 16 + v[1]),
+               static_cast<std::uint8_t>(v[2] * 16 + v[3]),
+               static_cast<std::uint8_t>(v[4] * 16 + v[5])};
+}
+
+// Read a string field guarded by type; std::nullopt if absent or wrong type.
+std::optional<std::string> read_str(const json& doc, const char* key)
+{
+    if (auto it = doc.find(key); it != doc.end() && it->is_string())
+    {
+        return it->get<std::string>();
+    }
+    return std::nullopt;
+}
+
+// Read an integer field guarded by type, then clamp to [lo, hi]; the fallback
+// (an absent/malformed value) is returned unclamped by the caller's default.
+std::optional<int> read_clamped_int(const json& doc, const char* key, int lo, int hi)
+{
+    if (auto it = doc.find(key);
+        it != doc.end() && it->is_number_integer())
+    {
+        return clamp_int(it->get<int>(), lo, hi);
+    }
+    return std::nullopt;
+}
+
+// Read a bool field guarded by type; std::nullopt if absent or wrong type.
+std::optional<bool> read_bool(const json& doc, const char* key)
+{
+    if (auto it = doc.find(key); it != doc.end() && it->is_boolean())
+    {
+        return it->get<bool>();
+    }
+    return std::nullopt;
+}
 
 // Forward-migrate a parsed settings document to the current schema in memory.
 //
@@ -39,10 +112,38 @@ CursorSettings read_settings(const json& doc)
     {
         s.enabled = it->get<bool>();
     }
-    if (auto it = doc.find("draw_above_windows");
-        it != doc.end() && it->is_boolean())
+    if (auto b = read_bool(doc, "draw_above_windows")) { s.draw_above_windows = *b; }
+
+    // v2 (004-02) appearance. Absent in a v1 file -> each keeps its default:
+    // that IS the 004-01 -> 004-02 forward migration. A malformed value (bad
+    // colour hex, out-of-range size, unknown preset slug) degrades to the default
+    // rather than throwing, consistent with the corrupt-file recovery contract.
+    if (auto slug = read_str(doc, "preset"))
     {
-        s.draw_above_windows = it->get<bool>();
+        if (auto p = preset_from_slug(*slug)) { s.preset = *p; }
+    }
+    if (auto hex = read_str(doc, "colour"))
+    {
+        if (auto c = from_hex(*hex)) { s.colour = *c; }
+    }
+    if (auto n = read_clamped_int(doc, "size_px", kSizeMin, kSizeMax)) { s.size_px = *n; }
+    if (auto n = read_clamped_int(doc, "opacity_pct", kOpacityMin, kOpacityMax))
+    {
+        s.opacity_pct = *n;
+    }
+    if (auto b = read_bool(doc, "outline")) { s.outline = *b; }
+    if (auto hex = read_str(doc, "outline_colour"))
+    {
+        if (auto c = from_hex(*hex)) { s.outline_colour = *c; }
+    }
+    if (auto b = read_bool(doc, "fill")) { s.fill = *b; }
+    if (auto n = read_clamped_int(doc, "fill_opacity_pct", kFillOpacityMin, kFillOpacityMax))
+    {
+        s.fill_opacity_pct = *n;
+    }
+    if (auto hex = read_str(doc, "fill_colour"))
+    {
+        if (auto c = from_hex(*hex)) { s.fill_colour = *c; }
     }
     return s;
 }
@@ -81,6 +182,16 @@ std::string CursorStore::serialize() const
     doc["schema_version"]     = CursorSettings::kSchemaVersion;
     doc["enabled"]            = settings_.enabled;
     doc["draw_above_windows"] = settings_.draw_above_windows;
+    // v2 (004-02) appearance.
+    doc["preset"]             = preset_to_slug(settings_.preset);
+    doc["colour"]             = to_hex(settings_.colour);
+    doc["size_px"]            = settings_.size_px;
+    doc["opacity_pct"]        = settings_.opacity_pct;
+    doc["outline"]            = settings_.outline;
+    doc["outline_colour"]     = to_hex(settings_.outline_colour);
+    doc["fill"]               = settings_.fill;
+    doc["fill_opacity_pct"]   = settings_.fill_opacity_pct;
+    doc["fill_colour"]        = to_hex(settings_.fill_colour);
     return doc.dump(2);
 }
 
