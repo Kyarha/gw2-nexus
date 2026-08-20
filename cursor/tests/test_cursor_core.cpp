@@ -206,8 +206,9 @@ TEST_CASE("appearance factory defaults match the v1.0 design (004-02)")
     CHECK_FALSE(s.fill);                                    // AC6: off by default
     CHECK(s.fill_opacity_pct == 35);                        // mockup
     CHECK(s.fill_colour == cursor::Rgb{0xf2, 0xf2, 0xf6});  // near-white
-    // Schema bumped for the appearance fields.
-    CHECK(cursor::CursorSettings::kSchemaVersion == 2);
+    CHECK(s.fill_size_pct == 70);                           // v3: fill size %
+    // Schema bumped for the appearance fields (v3 added fill_size_pct).
+    CHECK(cursor::CursorSettings::kSchemaVersion == 3);
 }
 
 // --- 004-02 AC8: every appearance field round-trips through disk ---------------
@@ -225,6 +226,7 @@ TEST_CASE("every appearance field round-trips through disk (004-02 AC8)")
     edited.fill             = true;
     edited.fill_opacity_pct = 80;
     edited.fill_colour      = cursor::Rgb{0x00, 0xff, 0x00};
+    edited.fill_size_pct    = 45;
     {
         cursor::CursorStore store(tmp.path);
         CHECK(store.set(edited)); // write-through, value changed
@@ -246,7 +248,7 @@ TEST_CASE("appearance mutations are written through with no explicit flush (004-
     json on_disk = json::parse(read_disk(tmp.path));
     CHECK(on_disk["preset"] == "radar_dash");
     CHECK(on_disk["colour"] == "#0a0b0c");
-    CHECK(on_disk["schema_version"] == 2);
+    CHECK(on_disk["schema_version"] == 3);
 }
 
 // --- 004-02 AC8: the 004-01 -> 004-02 migration -------------------------------
@@ -273,7 +275,7 @@ TEST_CASE("a v1 (004-01) file loads with appearance defaulted, then re-stamps v2
     // Any mutation re-stamps the file at v2 with the appearance keys present.
     store.set_enabled(true);
     json on_disk = json::parse(read_disk(tmp.path));
-    CHECK(on_disk["schema_version"] == 2);
+    CHECK(on_disk["schema_version"] == 3);
     REQUIRE(on_disk.contains("preset"));
     CHECK(on_disk["preset"] == "pulse_ring");
     CHECK(on_disk["outline"] == true);
@@ -304,12 +306,13 @@ TEST_CASE("out-of-range size/opacity/fill-opacity are clamped on read (004-02)")
     TempStorePath tmp;
     {
         std::ofstream out(tmp.path, std::ios::binary);
-        out << R"({"schema_version":2,"size_px":5,"opacity_pct":0,"fill_opacity_pct":250})";
+        out << R"({"schema_version":2,"size_px":5,"opacity_pct":0,"fill_opacity_pct":250,"fill_size_pct":3})";
     }
     cursor::CursorStore lo(tmp.path);
     CHECK(lo.settings().size_px == cursor::kSizeMin);          // 5 -> 40
     CHECK(lo.settings().opacity_pct == cursor::kOpacityMin);   // 0 -> 20
     CHECK(lo.settings().fill_opacity_pct == cursor::kFillOpacityMax); // 250 -> 100
+    CHECK(lo.settings().fill_size_pct == cursor::kFillSizeMin); // 3 -> 10
 
     {
         std::ofstream out(tmp.path, std::ios::binary);

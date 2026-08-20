@@ -145,6 +145,10 @@ CursorSettings read_settings(const json& doc)
     {
         if (auto c = from_hex(*hex)) { s.fill_colour = *c; }
     }
+    if (auto n = read_clamped_int(doc, "fill_size_pct", kFillSizeMin, kFillSizeMax))
+    {
+        s.fill_size_pct = *n;
+    }
     return s;
 }
 
@@ -192,6 +196,7 @@ std::string CursorStore::serialize() const
     doc["fill"]               = settings_.fill;
     doc["fill_opacity_pct"]   = settings_.fill_opacity_pct;
     doc["fill_colour"]        = to_hex(settings_.fill_colour);
+    doc["fill_size_pct"]      = settings_.fill_size_pct;
     return doc.dump(2);
 }
 

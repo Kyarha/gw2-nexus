@@ -95,13 +95,14 @@ enum class FillShape { None, Disc, Square };
 struct PresetCaps {
     bool      has_outline;
     FillShape fill_shape;
-    float     fill_extent; // fraction of size: disc radius, or square half-side
+    float     fill_extent_max; // fraction of size at Fill size 100% (fills the
+                               // shape); scaled down by fill_size_pct
 };
 constexpr PresetCaps kPresetCaps[] = {
-    /* PulseRing       */ { true,  FillShape::Disc,   0.30f },
-    /* CornerReticle   */ { true,  FillShape::Square, 0.24f },
-    /* BeaconCrosshair */ { true,  FillShape::Disc,   0.18f },
-    /* RadarDash       */ { true,  FillShape::Disc,   0.30f },
+    /* PulseRing       */ { true,  FillShape::Disc,   0.37f },
+    /* CornerReticle   */ { true,  FillShape::Square, 0.30f },
+    /* BeaconCrosshair */ { true,  FillShape::Disc,   0.44f },
+    /* RadarDash       */ { true,  FillShape::Disc,   0.35f },
     /* SoftHalo        */ { false, FillShape::None,   0.00f },
 };
 
@@ -215,7 +216,9 @@ void DrawMarker(ImDrawList* dl, const ImVec2& center, const cursor::CursorSettin
     if (s.fill && caps.fill_shape != FillShape::None)
     {
         const ImU32 fc = FillTint(s.fill_colour, s.fill_opacity_pct, s.opacity_pct);
-        const float e = size * caps.fill_extent;
+        const float frac = cursor::clamp_int(s.fill_size_pct,
+                               cursor::kFillSizeMin, cursor::kFillSizeMax) / 100.0f;
+        const float e = size * caps.fill_extent_max * frac;
         if (caps.fill_shape == FillShape::Square)
         {
             dl->AddRectFilled(ImVec2(center.x - e, center.y - e),
@@ -350,6 +353,13 @@ void RenderPanel()
     if (ImGui::Checkbox("Fill centre", &fill)) { s.fill = fill; }
     if (s.fill)
     {
+        int fs = s.fill_size_pct;
+        if (ImGui::SliderInt("Fill size", &fs,
+                             cursor::kFillSizeMin, cursor::kFillSizeMax, "%d%%"))
+        {
+            s.fill_size_pct =
+                cursor::clamp_int(fs, cursor::kFillSizeMin, cursor::kFillSizeMax);
+        }
         int fo = s.fill_opacity_pct;
         if (ImGui::SliderInt("Fill opacity", &fo,
                              cursor::kFillOpacityMin, cursor::kFillOpacityMax, "%d%%"))

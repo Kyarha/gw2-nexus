@@ -127,7 +127,10 @@ Deviations from the spec/mockup surfaced during in-game iteration:
    inside the Corner Reticle; correctly-sized discs elsewhere) rather than one
    oversized disc. Refines AC5/AC6.
 6. **Fill is procedural, not textured** — the v1.0 design has no fill geometry, so
-   the fill centre is drawn (disc/square), not a bundled art layer (AC6).
+   the fill centre is drawn (disc/square), not a bundled art layer (AC6). Adds a
+   **Fill size** control (schema v3 `fill_size_pct`, % of the preset's max fill
+   extent) beyond the mockup, so the fill can be scaled up to the shape (e.g. as
+   big as the Beacon Crosshair).
 7. **Preset switch adopts the preset's signature hue** (overwrites Colour),
    mirroring the mockup. Per-preset colour memory (returning to a preset keeps a
    custom colour) is a requested enhancement, pending.
