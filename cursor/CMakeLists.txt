@@ -24,7 +24,9 @@ add_test(NAME cursor-core-tests COMMAND cursor-core-tests)
 
 # --- cursor: the Nexus addon DLL (Windows only) --------------------------------
 if(WIN32)
-  add_library(cursor SHARED src/entry.cpp)
+  # assets/resources.rc embeds the preset layer PNGs as RCDATA (loaded at runtime
+  # via Textures_GetOrCreateFromResource); MSVC compiles the .rc into the DLL.
+  add_library(cursor SHARED src/entry.cpp assets/resources.rc)
   target_link_libraries(cursor PRIVATE imgui nexus-api cursor-core shared-core)
   set_target_properties(cursor PROPERTIES
     PREFIX ""            # cursor.dll, not libcursor.dll

@@ -1,0 +1,16 @@
+// Embed the preset layer PNGs into cursor.dll as RCDATA so the addon ships as a
+// single DLL (no loose art files to deploy). Loaded at runtime via Nexus
+// Textures_GetOrCreateFromResource(id, resourceID, hModule). Paths are relative
+// to this .rc file (cursor/assets). Regenerate the PNGs with rasterize.mjs.
+#include "resource_ids.h"
+
+IDR_CURSOR_PULSE_RING_OUTLINE       RCDATA "presets/pulse-ring-outline.png"
+IDR_CURSOR_PULSE_RING_COLOUR        RCDATA "presets/pulse-ring-colour.png"
+IDR_CURSOR_CORNER_RETICLE_OUTLINE   RCDATA "presets/corner-reticle-outline.png"
+IDR_CURSOR_CORNER_RETICLE_COLOUR    RCDATA "presets/corner-reticle-colour.png"
+IDR_CURSOR_BEACON_CROSSHAIR_OUTLINE RCDATA "presets/beacon-crosshair-outline.png"
+IDR_CURSOR_BEACON_CROSSHAIR_COLOUR  RCDATA "presets/beacon-crosshair-colour.png"
+IDR_CURSOR_RADAR_DASH_OUTLINE       RCDATA "presets/radar-dash-outline.png"
+IDR_CURSOR_RADAR_DASH_COLOUR        RCDATA "presets/radar-dash-colour.png"
+IDR_CURSOR_SOFT_HALO_OUTLINE        RCDATA "presets/soft-halo-outline.png"
+IDR_CURSOR_SOFT_HALO_COLOUR         RCDATA "presets/soft-halo-colour.png"
