@@ -1,11 +1,11 @@
 // cursor-core unit tests (doctest) — the off-game, pure-logic surface of the
-// Cursor Finder addon (slice 004-01).
+// Cursor Finder addon (slices 004-01 + 004-02).
 //
-// These cover: settings defaults (AC6/AC7), JSON round-trip + write-through
-// durability (AC6), schema versioning + forward migration (AC7), and pointer
-// geometry centering (AC8). Rendering, keybind, QuickAccess, and the live
-// preview (AC1-AC5 Windows/ImGui surface) are the manual in-game portion and are
-// NOT asserted here.
+// These cover: settings defaults, JSON round-trip + write-through durability,
+// schema versioning + forward migration (v1->v3), field clamping, colour hex
+// round-trip, Reset-to-defaults, and pointer geometry centering. The Windows/
+// ImGui surface (rendering, keybind, QuickAccess, panel, live preview, textures)
+// is the manual in-game portion and is NOT asserted here.
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
 
@@ -139,16 +139,14 @@ TEST_CASE("the persisted record carries a top-level schema version (AC7)")
 TEST_CASE("a later-schema file with extra fields loads forward-compatibly (AC7)")
 {
     TempStorePath tmp;
-    // Simulate a file written by a *later* slice: a bumped version, unknown
-    // top-level fields (preset/colour/visibility), and only `enabled` set. The
-    // unknown fields must be ignored, `enabled` honoured, and `draw_above_windows`
-    // fall back to its default — no data loss, no rejection.
+    // Simulate a file written by a *later* slice: a bumped version, a field this
+    // build has never heard of (004-03 visibility matrix), and only `enabled`
+    // set. The unknown field must be ignored, `enabled` honoured, and every
+    // absent field fall back to its default — no data loss, no rejection.
     {
         json doc;
         doc["schema_version"]  = cursor::CursorSettings::kSchemaVersion + 5;
         doc["enabled"]         = false;
-        doc["preset"]          = "corner_reticle"; // 004-02, unknown here
-        doc["colour"]          = "#22e0ff";        // 004-02, unknown here
         doc["future_matrix"]   = json::array();    // 004-03, unknown here
         std::ofstream out(tmp.path, std::ios::binary);
         out << doc.dump(2);
@@ -191,6 +189,177 @@ TEST_CASE("a malformed field degrades to its default, the rest loads (AC7)")
     cursor::CursorStore store(tmp.path);
     CHECK(store.settings().enabled);                 // malformed -> default (true)
     CHECK_FALSE(store.settings().draw_above_windows); // valid -> honoured
+}
+
+// --- 004-02 AC1-AC8: appearance defaults --------------------------------------
+
+TEST_CASE("appearance factory defaults match the v1.0 design (004-02)")
+{
+    const cursor::CursorSettings s = cursor::CursorSettings::defaults();
+    CHECK(s.preset == cursor::Preset::PulseRing);          // AC1 default
+    CHECK(s.colour == cursor::signature_hue(cursor::Preset::PulseRing)); // AC2
+    CHECK(s.colour == cursor::Rgb{0xff, 0x2d, 0x9b});      // magenta
+    CHECK(s.size_px == 96);                                 // AC3 (mockup)
+    CHECK(s.opacity_pct == 90);                             // AC4 (mockup)
+    CHECK(s.outline);                                       // AC5: on by default
+    CHECK(s.outline_colour == cursor::Rgb{0x14, 0x14, 0x18}); // dark default
+    CHECK_FALSE(s.fill);                                    // AC6: off by default
+    CHECK(s.fill_opacity_pct == 35);                        // mockup
+    CHECK(s.fill_colour == cursor::Rgb{0xf2, 0xf2, 0xf6});  // near-white
+    CHECK(s.fill_size_pct == 70);                           // v3: fill size %
+    // Schema bumped for the appearance fields (v3 added fill_size_pct).
+    CHECK(cursor::CursorSettings::kSchemaVersion == 3);
+}
+
+// --- 004-02 AC8: every appearance field round-trips through disk ---------------
+
+TEST_CASE("every appearance field round-trips through disk (004-02 AC8)")
+{
+    TempStorePath tmp;
+    cursor::CursorSettings edited = cursor::CursorSettings::defaults();
+    edited.preset           = cursor::Preset::SoftHalo;
+    edited.colour           = cursor::Rgb{0x12, 0x34, 0x56};
+    edited.size_px          = 88;  // within [kSizeMin, kSizeMax]
+    edited.opacity_pct      = 55;
+    edited.outline          = false;
+    edited.outline_colour   = cursor::Rgb{0xab, 0xcd, 0xef};
+    edited.fill             = true;
+    edited.fill_opacity_pct = 80;
+    edited.fill_colour      = cursor::Rgb{0x00, 0xff, 0x00};
+    edited.fill_size_pct    = 45;
+    {
+        cursor::CursorStore store(tmp.path);
+        CHECK(store.set(edited)); // write-through, value changed
+    }
+    cursor::CursorStore reloaded(tmp.path);
+    CHECK(reloaded.settings() == edited); // all fields preserved next session
+}
+
+TEST_CASE("appearance mutations are written through with no explicit flush (004-02)")
+{
+    TempStorePath tmp;
+    cursor::CursorStore store(tmp.path);
+
+    cursor::CursorSettings next = store.settings();
+    next.preset = cursor::Preset::RadarDash;
+    next.colour = cursor::Rgb{0x0a, 0x0b, 0x0c};
+    CHECK(store.set(next));
+
+    json on_disk = json::parse(read_disk(tmp.path));
+    CHECK(on_disk["preset"] == "radar_dash");
+    CHECK(on_disk["colour"] == "#0a0b0c");
+    CHECK(on_disk["schema_version"] == 3);
+}
+
+// --- 004-02 AC8: the 004-01 -> 004-02 migration -------------------------------
+
+TEST_CASE("a v1 (004-01) file loads with appearance defaulted, then re-stamps v2 (004-02)")
+{
+    TempStorePath tmp;
+    // Exactly what 004-01 wrote: schema 1, only the two v1 fields.
+    {
+        std::ofstream out(tmp.path, std::ios::binary);
+        out << R"({"schema_version":1,"enabled":false,"draw_above_windows":false})";
+    }
+    cursor::CursorStore store(tmp.path);
+    // v1 fields honoured...
+    CHECK_FALSE(store.settings().enabled);
+    CHECK_FALSE(store.settings().draw_above_windows);
+    // ...and every absent appearance field falls back to its default (no loss).
+    CHECK(store.settings().preset == cursor::Preset::PulseRing);
+    CHECK(store.settings().colour == cursor::Rgb{0xff, 0x2d, 0x9b});
+    CHECK(store.settings().size_px == 96);
+    CHECK(store.settings().outline);
+    CHECK_FALSE(store.settings().fill);
+
+    // Any mutation re-stamps the file at v2 with the appearance keys present.
+    store.set_enabled(true);
+    json on_disk = json::parse(read_disk(tmp.path));
+    CHECK(on_disk["schema_version"] == 3);
+    REQUIRE(on_disk.contains("preset"));
+    CHECK(on_disk["preset"] == "pulse_ring");
+    CHECK(on_disk["outline"] == true);
+}
+
+// --- 004-02: malformed appearance fields degrade to defaults ------------------
+
+TEST_CASE("malformed appearance fields degrade to defaults, valid ones honoured (004-02)")
+{
+    TempStorePath tmp;
+    {
+        // unknown preset slug, non-hex colour, wrong-typed size, valid opacity.
+        std::ofstream out(tmp.path, std::ios::binary);
+        out << R"({"schema_version":2,"preset":"laser_dorito","colour":"not-a-hex",)"
+               R"("size_px":"big","opacity_pct":40})";
+    }
+    cursor::CursorStore store(tmp.path);
+    CHECK(store.settings().preset == cursor::Preset::PulseRing);       // unknown -> default
+    CHECK(store.settings().colour == cursor::Rgb{0xff, 0x2d, 0x9b});   // bad hex -> default
+    CHECK(store.settings().size_px == 96);                             // wrong type -> default
+    CHECK(store.settings().opacity_pct == 40);                         // valid -> honoured
+}
+
+// --- 004-02 AC3/AC4/AC6: out-of-range numbers are clamped on read -------------
+
+TEST_CASE("out-of-range size/opacity/fill-opacity are clamped on read (004-02)")
+{
+    TempStorePath tmp;
+    {
+        std::ofstream out(tmp.path, std::ios::binary);
+        out << R"({"schema_version":2,"size_px":5,"opacity_pct":0,"fill_opacity_pct":250,"fill_size_pct":3})";
+    }
+    cursor::CursorStore lo(tmp.path);
+    CHECK(lo.settings().size_px == cursor::kSizeMin);          // 5 -> 40
+    CHECK(lo.settings().opacity_pct == cursor::kOpacityMin);   // 0 -> 20
+    CHECK(lo.settings().fill_opacity_pct == cursor::kFillOpacityMax); // 250 -> 100
+    CHECK(lo.settings().fill_size_pct == cursor::kFillSizeMin); // 3 -> 10
+
+    {
+        std::ofstream out(tmp.path, std::ios::binary);
+        out << R"({"schema_version":2,"size_px":9999})";
+    }
+    cursor::CursorStore hi(tmp.path);
+    CHECK(hi.settings().size_px == cursor::kSizeMax);          // 9999 -> 100
+}
+
+// --- 004-02 AC7: Reset to defaults --------------------------------------------
+
+TEST_CASE("reset to defaults restores the v1.0 appearance (004-02 AC7)")
+{
+    TempStorePath tmp;
+    cursor::CursorStore store(tmp.path);
+
+    cursor::CursorSettings messed = store.settings();
+    messed.preset = cursor::Preset::BeaconCrosshair;
+    messed.size_px = 100;
+    messed.outline = false;
+    messed.fill = true;
+    CHECK(store.set(messed));
+
+    // Reset == writing the factory defaults through the store (what the panel's
+    // "Reset to defaults" button does).
+    CHECK(store.set(cursor::CursorSettings::defaults()));
+    CHECK(store.settings() == cursor::CursorSettings::defaults());
+
+    cursor::CursorStore reloaded(tmp.path); // and it persisted
+    CHECK(reloaded.settings() == cursor::CursorSettings::defaults());
+}
+
+// --- 004-02: preset slug <-> enum round-trip ----------------------------------
+
+TEST_CASE("every preset slug round-trips through the enum (004-02)")
+{
+    for (const cursor::Preset p : {cursor::Preset::PulseRing,
+                                   cursor::Preset::CornerReticle,
+                                   cursor::Preset::BeaconCrosshair,
+                                   cursor::Preset::RadarDash,
+                                   cursor::Preset::SoftHalo})
+    {
+        const auto back = cursor::preset_from_slug(cursor::preset_to_slug(p));
+        REQUIRE(back.has_value());
+        CHECK(*back == p);
+    }
+    CHECK_FALSE(cursor::preset_from_slug("nope").has_value());
 }
 
 // --- AC8: pointer geometry centering -----------------------------------------

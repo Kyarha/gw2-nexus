@@ -78,3 +78,31 @@ fields), so the documented shape and the helper output agree.
 **Scope:** notes/core/note_store.cpp; shared/persistence/atomic_file.*
 
 **Commit:** 24f144b
+
+### 2026-08-20 — Cursor marker latency: velocity prediction (to be toggle-gated)
+
+**Decision:** TRIED AND REVERTED. Velocity look-ahead (leading the marker ~1 frame along smoothed cursor motion) hid the lag but felt too nervous/jittery in play, a bad trade for a find-my-cursor aid. Reverted to a plain anchor on the OS-instantaneous cursor (GetCursorPos->ScreenToClient, kept — it beats ImGui's event-driven io.MousePos). Residual ~1-frame latency is accepted as inherent to an in-frame overlay and is amplified under CrossOver's low fps; expected to be negligible on a fast native-Windows client.
+
+**Context:** The OS composites the hardware cursor AFTER the game presents its frame, so anything drawn INTO the game frame (Nexus/ImGui overlay) is inherently ~1 frame behind, worse at low fps. Rejected fixes: later Nexus render stage (fires outside the ImGui frame); velocity prediction (reverted, too nervous). The only way to truly stick to the cursor at zero latency is to draw on the OS cursor plane itself (a custom hardware cursor / HCURSOR), which is a much larger, invasive change (cursor hooking, size caps, loses live animation) — noted as a possible future direction, not adopted.
+
+**Scope:** cursor addon — cursor/src/entry.cpp live-marker draw anchor (PredictedPointer)
+
+**Commit:** PR #8 (branch claude/cursor-appearance-004-02)
+
+### 2026-08-20 — Cursor marker is intentionally static (no pulse/animation)
+
+**Decision:** The cursor marker does not animate — no pulse, spin, or throb. It is drawn as a still shape. (The 'Pulse Ring' preset name denotes the ring style, not motion.)
+
+**Context:** In GW2 combat everything is already moving — particles, skill tells, effects. An animated marker blends INTO that motion; a completely static marker is what stands out, because stillness is the one cue the battlefield does not produce. This is the core visibility rationale: find-the-cursor works by contrast-through-stillness, not by attracting the eye with motion. Do NOT add animation to 'improve visibility' — it does the opposite here. Also removes the main downside of the future custom-hardware-cursor path (which cannot animate).
+
+**Scope:** cursor addon marker rendering (all presets); informs 004-03 visibility + the hardware-cursor refinement-todo
+
+### 2026-08-20 — Bundle addon textures via GetOrCreateFromMemory, not .rc/RCDATA
+
+**Decision:** Embed addon PNG art as C byte arrays compiled into the DLL and load with Nexus Textures_GetOrCreateFromMemory. Do NOT use a Windows .rc/RCDATA resource + Textures_GetOrCreateFromResource: it built fine and the PNGs were verifiably embedded (IHDR chunks present), but at runtime FindResource-by-numeric-ID failed under CrossOver ('Resource not found ResID: 103'). FromMemory has no FindResource/module-handle/language-stamp to go wrong. A small generator (cursor/assets/gen_texture_data.py) turns presets/*.png into preset_textures_data.h; regen is rasterize.mjs -> gen_texture_data.py.
+
+**Context:** 004-02 cursor preset art. Two builds were burned on the resource path (module handle, resource language, numeric-vs-string IDs — none conclusively root-caused) before switching to memory loading, which worked first try. Rejected alternative: .rc/RCDATA (fragile under Wine/CrossOver, and the failure mode is silent — build passes, textures just never appear). Applies to any future Nexus addon bundling art (e.g. themed icons for notes/cursor).
+
+**Scope:** cursor addon art pipeline; general Nexus addon texture bundling
+
+**Commit:** PR #8 / commit 5067dcc

@@ -24,6 +24,9 @@ add_test(NAME cursor-core-tests COMMAND cursor-core-tests)
 
 # --- cursor: the Nexus addon DLL (Windows only) --------------------------------
 if(WIN32)
+  # Preset PNGs are embedded as C byte arrays (assets/preset_textures_data.h) and
+  # loaded via Textures_GetOrCreateFromMemory — no .rc / Windows resource lookup
+  # (FindResource by numeric ID failed at runtime; see git history).
   add_library(cursor SHARED src/entry.cpp)
   target_link_libraries(cursor PRIVATE imgui nexus-api cursor-core shared-core)
   set_target_properties(cursor PROPERTIES

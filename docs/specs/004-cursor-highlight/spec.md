@@ -54,8 +54,9 @@ extract the concrete design values from those mockups.
 
 ### The five presets (from the v1.0 design)
 
-Every preset is **200×200, with a baked dark outline** so the shape survives on
-any background, and a **signature hue GW2's own effects avoid** (the design's
+Every preset is **200×200, with an outline** so the shape survives on any
+background (in 004-02 the outline is a tintable, optional layer defaulting to
+dark — see A2), and a **signature hue GW2's own effects avoid** (the design's
 "no red — red reads as enemy AoE" rule). Vector source; rasterized to PNG for
 Nexus ([Assets.dc.html](../../designs/cursors_v1.0/Assets.dc.html)).
 
@@ -115,13 +116,18 @@ link paths.
   an `ID3D11ShaderResourceView*` ([sdk/Nexus.h:325-330](../../../sdk/Nexus.h)),
   loaded by `Textures_GetOrCreateFrom{File,Memory,Resource}` (stb_image decode);
   there is **no SVG path**. So the v1.0 SVGs are rasterized to PNG. But each
-  preset is **two-tone** (a dark outline *behind* a colored core) and the Colour
-  knob must recolor only the core while the outline stays dark — a single tint
+  preset is **two-tone** (an outline *behind* a colored core) and the Colour
+  knob must recolor only the core independently of the outline — a single tint
   over one baked PNG cannot do that. The planned mechanism (resolved in 004-02):
-  ship each preset as **layered white/alpha masks** — a fixed **outline layer**
-  (drawn untinted) + a **colour layer** (tinted by the user's Colour) + an
-  optional **fill layer** (tinted by Fill colour) — composited with `AddImage`
-  tints. Soft Halo's gradient is authored as an alpha-graded colour-layer mask.
+  ship each preset as **layered white/alpha masks** — an optional **outline
+  layer** (tinted by the user's Outline colour, on by default in a dark hue for
+  readability) + a **colour layer** (tinted by the user's Colour) + an optional
+  **fill layer** (tinted by Fill colour) — composited with `AddImage` tints.
+  Every layer is a white/alpha mask so each is tinted independently at draw
+  time; none has colour baked in. Soft Halo's gradient is authored as an
+  alpha-graded colour-layer mask. (004-02 makes the outline a player-controlled,
+  tintable, optional layer — a deliberate divergence from the mockup's fixed dark
+  outline; see slice 004-02 AC5.)
   This is an assumption about the cleanest faithful approach, confirmed when
   004-02 lands the art; a lower-fidelity fallback (baked-color PNGs, no live
   recolor) exists if layering proves impractical.
@@ -168,10 +174,11 @@ appearance) and **Rules** (always-on → combat/movement-gated), happy Path firs
   its own and stands up the whole addon skeleton + `cursor-core`.
 - **004-02 (Interface axis — full appearance)** — the mockup's **APPEARANCE**
   block: the **5-preset style picker**, **Colour**, **Size**, **Opacity**,
-  **Fill centre** + **Fill opacity** + **Fill colour**, and **Reset to
-  defaults**, all persisted. Bundles the PNG art set (rasterized from the five
-  `overlay-*.svg`) and resolves the **layered-recolor mechanism** (A2). This is
-  the "customizable" half of UC-14.
+  **Outline** (toggle + colour — a divergence from the mockup's fixed dark
+  outline), **Fill centre** + **Fill opacity** + **Fill colour** + **Fill size**,
+  and **Reset to defaults**, all persisted. Bundles the PNG art set (rasterized
+  from the five `overlay-*.svg`, embedded and loaded from memory) and resolves the
+  **layered-recolor mechanism** (A2). This is the "customizable" half of UC-14.
 - **004-03 (Rules axis — combat- and movement-aware visibility)** — the mockup's
   **Show overlay** matrix: per combat state (**Out of combat** / **In combat**),
   choose **Always / While moving / Never**, via the `UiState` combat bit (A3) and
