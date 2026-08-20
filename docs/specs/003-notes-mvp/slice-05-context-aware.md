@@ -1,9 +1,20 @@
 ---
-status: DRAFT
+status: IN_PROGRESS
 dependencies: [003-01]
 last_verified:
 frame_review: true
+claimed_by: claude/notes-context-aware-003-05
 ---
+
+<!-- Framing (frame_review, 2026-08-20): proceed as ONE slice — the off-game core
+     for both dimensions (per-character filter + map auto-surface) is small and
+     cohesive, so the 05a/05b split is not taken. A1 read paths grounded to the
+     shipping surface: map id = MumbleContext.MapId (already read by 003-02),
+     character name = MumbleLink.Identity JSON `name`, map-change = per-frame poll
+     of MapId. Those reads are the Windows/in-game (CI-only) portion, stated
+     honestly. Schema bump v2→v3 is additive/compatible (absent tags → nullopt),
+     so it does NOT trip the deferred version-dispatch hook. -->
+
 
 <!-- jig grounding (spec 064-02 / ADR-0020): ground factual claims about runnable
      surfaces by probe first (run it / read source) or a citation, else mark them
@@ -52,10 +63,14 @@ principle #2). Delivers UC-9 (map auto-appear) and UC-10 (per-character notes).
 **DoD:**
 - [ ] AC1–AC5 pass; map auto-surface verified in-game by tagging a note to a map,
       leaving, and re-entering (recorded with a screenshot in the deviation log).
-- [ ] Automated coverage where it applies: the **tag-match/filter logic** (given
+      _(In-game portion — owner-verified via CI build; pending.)_
+- [x] Automated coverage where it applies: the **tag-match/filter logic** (given
       character X and map Y, which notes surface) and the **record migration** are
       unit-tested off-game; each test shown to fail when its feature is removed.
       The map-change detection is the manual/in-game portion, stated honestly.
+      _(Done off-game: `notes/core/context.{h,cpp}` predicates + `note_store`
+      tags/migration; `notes/tests/test_note_store.cpp` — 23 cases / 143 assertions
+      pass; the `note_surfaces_in` untagged-neutrality mutation shown to fail.)_
 - [ ] Reviewed by the `reviewer` subagent (compliance + craft recorded and clear).
 - [ ] Deviation log + reconciliation sweep produced.
 - [ ] Reconciliation review passed.
@@ -76,8 +91,48 @@ on arrival — visible convenience on top of the always-reachable panel.
 
 ### Deviation log (after reconciliation)
 
-_TBD at implementation._
+**Delivered off-game (verified on macOS, hand-compiled doctest):**
+- `notes/core/note.{h}` — `Note` gains optional `character` (string) and `map_tag`
+  (uint) context tags (AC1).
+- `notes/core/note_store.{h,cpp}` — schema **v2→v3** (additive/compatible);
+  serialize/parse the tags (omitted when unset, tolerant of malformed values);
+  `set_character`/`clear_character`, `set_map_tag`/`clear_map_tag` write-through
+  mutators mirroring the coordinate pair (AC1).
+- `notes/core/context.{h,cpp}` — pure predicates: `tagged_to_character` (AC2
+  filter basis), `tagged_to_map` (AC3 auto-surface basis), and `note_surfaces_in`
+  (AND over set tags; untagged = neutral, unknown context dimension matches
+  nothing — AC4 never-gate encoded as "don't surface", never "hide").
+- Tests: +7 cases / +63 assertions (23/143 total); red→green→mutation shown.
+
+**Delivered in-game glue (Windows/MSVC-only — compiles on CI, NOT verified here):**
+- `notes/src/entry.cpp` — live reads `ReadCurrentMapId()` and
+  `ReadCurrentCharacter()` (parses `MumbleLink.Identity` JSON via
+  WideCharToMultiByte); a per-note **tag/untag** row for character + map (AC1); a
+  **"Only <character>'s notes"** opt-in filter that never gates (AC2/AC4); and
+  `PollMapAutoSurface()`, run every frame ahead of the panel-open gate, that opens
+  the panel on a real map **transition** into a map with tagged notes (AC3).
+
+**Deviations / decisions (plainly):**
+- **Auto-surface = open the panel** (AC3's "the panel opens" option), not
+  highlight/sort-to-top. Highlighting the matched notes is a possible enhancement,
+  deferred.
+- **No login-baseline pop (AC5, design principle #3).** The first live map read
+  only establishes the baseline; auto-surface fires only on a subsequent
+  transition — so logging in onto a tagged map does **not** force the panel open.
+  Conservative reading of "non-intrusive"; easy to relax if the owner wants a
+  login greet.
+- **AC5 cutscene/menu suppression is partial.** Loading is covered (MapId 0 →
+  nullopt, no fire) and the once-per-transition debounce covers "no per-frame
+  re-pop"; MumbleLink exposes no clean cutscene/menu bit, so those are not
+  specially suppressed beyond the map-0 gate. Stated honestly; revisit if intrusive.
+- **A1 remains runtime-unverified** — the `Identity`-JSON character read and the
+  MapId poll are the in-game portion; confirmed only when the owner runs the CI
+  build in-game.
+- **entry.cpp integration:** this branch extends the **themed** (003-06) entry.cpp
+  on `main`; 003-04's coordinate-actions branch is still on the pre-theme flat
+  layout and behind `main`. Both touch the same per-note action row, so they
+  conflict and merge at the v1.2 integration pass (see the 003-04 divergence note).
 
 ### Reconciliation sweep
 
-_TBD at reconciliation._
+_TBD at reconciliation (pending reviewer pass + in-game verification)._

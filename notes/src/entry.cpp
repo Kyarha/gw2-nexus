@@ -20,9 +20,12 @@
 #include <unordered_map>
 #include <vector>
 
+#include <nlohmann/json.hpp>
+
 #include "imgui.h"
 #include "Nexus.h"
 
+#include "core/context.h"
 #include "core/note.h"
 #include "core/note_store.h"
 #include "mumble_link.h"
@@ -48,6 +51,15 @@ AddonAPI_t*       g_API   = nullptr;
 notes::NoteStore* g_Store = nullptr;
 bool              g_PanelOpen = false;
 
+// 003-05 context-aware notes state.
+// AC2: an opt-in "this character only" list filter. Convenience, not a gate —
+// toggling it off always shows every note (AC4).
+bool g_FilterThisCharacter = false;
+// AC3/AC5: last map id seen by the auto-surface poll, to fire once per map
+// *transition* (never every frame, and never on the login baseline). nullopt
+// until the first live read establishes the baseline.
+std::optional<std::uint32_t> g_LastMapId;
+
 // Read the player's current continent position + map from the Nexus MumbleLink
 // data resource (003-02 AC1). Returns nullopt when the link is unavailable
 // (DataLink_Get missing / not yet published) or plainly not live yet — a fresh
@@ -65,6 +77,62 @@ std::optional<notes::Coordinate> ReadCurrentCoordinate()
     const notes::MumbleContext& ctx = link->ContextData;
     if (ctx.MapId == 0) { return std::nullopt; } // no valid map (loading screen)
     return notes::Coordinate{ctx.MapId, ctx.PlayerX, ctx.PlayerY};
+}
+
+// 003-05 context-aware notes: read the current map id and character name so notes
+// can be tagged to them and auto-surface (UC-9/UC-10). Same live-link caveats as
+// ReadCurrentCoordinate — the reads are the manual in-game portion, never blocked
+// on, and return nullopt until the link is live and on a real map.
+
+// Current map id, or nullopt when the link isn't live yet or reports map 0
+// (loading). Unlike ReadCurrentCoordinate this needs no player x/y — a note can
+// be tagged to a map without a stamped position.
+std::optional<std::uint32_t> ReadCurrentMapId()
+{
+    if (!g_API || !g_API->DataLink_Get) { return std::nullopt; }
+    const auto* link =
+        static_cast<const notes::MumbleLink*>(g_API->DataLink_Get(DL_MUMBLE_LINK));
+    if (!link || link->UiTick == 0) { return std::nullopt; } // not live yet
+    const std::uint32_t map = link->ContextData.MapId;
+    if (map == 0) { return std::nullopt; } // loading screen
+    return map;
+}
+
+// Current character name, parsed from MumbleLink's `Identity` — a UTF-16 JSON blob
+// (`{"name":"...","profession":n,...}`) the game republishes each frame. We convert
+// it to UTF-8 and pull `name`. nullopt until the link is live or if the blob is
+// absent/malformed (never a guessed name). This JSON-parse-of-Identity is the
+// runtime-unverified in-game portion (see mumble_link.h grounding note).
+std::optional<std::string> ReadCurrentCharacter()
+{
+    if (!g_API || !g_API->DataLink_Get) { return std::nullopt; }
+    const auto* link =
+        static_cast<const notes::MumbleLink*>(g_API->DataLink_Get(DL_MUMBLE_LINK));
+    if (!link || link->UiTick == 0 || link->Identity[0] == L'\0')
+    {
+        return std::nullopt;
+    }
+    const int len = ::WideCharToMultiByte(CP_UTF8, 0, link->Identity, -1,
+                                          nullptr, 0, nullptr, nullptr);
+    if (len <= 1) { return std::nullopt; } // empty / conversion failure
+    std::string utf8(static_cast<size_t>(len - 1), '\0'); // len includes the NUL
+    ::WideCharToMultiByte(CP_UTF8, 0, link->Identity, -1, utf8.data(), len,
+                          nullptr, nullptr);
+    const nlohmann::json id =
+        nlohmann::json::parse(utf8, /*cb=*/nullptr, /*allow_exceptions=*/false);
+    if (id.is_discarded() || !id.is_object()) { return std::nullopt; }
+    const auto it = id.find("name");
+    if (it == id.end() || !it->is_string()) { return std::nullopt; }
+    std::string name = it->get<std::string>();
+    if (name.empty()) { return std::nullopt; }
+    return name;
+}
+
+// The player's current context (character + map) as the pure notes-core predicates
+// consume it. Either dimension may be nullopt (link not live / on that dimension).
+notes::Context ReadCurrentContext()
+{
+    return notes::Context{ ReadCurrentCharacter(), ReadCurrentMapId() };
 }
 
 // Per-note editable text buffers, keyed by note id. Kept out of notes-core so
@@ -117,6 +185,25 @@ void RenderPanel()
     ImGui::PopStyleColor();
     ImGui::PopStyleVar();
     ImGui::Spacing();
+
+    // 003-05: the live context (character + map), read once per frame and reused
+    // by the filter and the per-note tag affordances below.
+    const notes::Context ctx = ReadCurrentContext();
+
+    // AC2 filter: optionally narrow the list to the current character's notes.
+    // Opt-in convenience — off by default, and toggling off restores every note,
+    // so a tag never hides a note you can't get back (AC4). Only offered when the
+    // character is known; otherwise the toggle is force-cleared so a stale filter
+    // can't silently hide notes after the link drops.
+    if (ctx.character)
+    {
+        const std::string label = "Only " + *ctx.character + "'s notes";
+        ImGui::Checkbox(label.c_str(), &g_FilterThisCharacter);
+    }
+    else
+    {
+        g_FilterThisCharacter = false;
+    }
     ImGui::Separator();
 
     std::string to_delete; // defer deletion until after the loop
@@ -130,6 +217,15 @@ void RenderPanel()
                       ImVec2(0.0f, ImGui::GetContentRegionAvail().y), false);
     for (const auto& note : g_Store->notes())
     {
+        // AC2 filter (opt-in): when "only this character" is on and the character
+        // is known, skip notes not tagged to them. Never a permanent gate — the
+        // filter is user-toggled and off shows everything (AC4).
+        if (g_FilterThisCharacter && ctx.character &&
+            !notes::tagged_to_character(note, *ctx.character))
+        {
+            continue;
+        }
+
         ImGui::PushID(note.id.c_str());
 
         std::vector<char>& buf = BufferFor(note);
@@ -175,6 +271,43 @@ void RenderPanel()
             ImGui::TextDisabled("Stamp here (no live position)");
         }
 
+        // --- 003-05: context tags (character + map) ---------------------------
+        // Show any tags and offer tag/untag against the live context. These drive
+        // auto-surface + the filter (AC1); they never gate the note itself (AC4).
+        // Tag buttons appear only when there's a live context value to tag with;
+        // an existing tag can always be cleared.
+        if (note.character)
+        {
+            ImGui::TextDisabled("%s", ("Character: " + *note.character).c_str());
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Untag character"))
+            {
+                g_Store->clear_character(note.id);
+            }
+        }
+        else if (ctx.character)
+        {
+            if (ImGui::SmallButton("Tag: this character"))
+            {
+                g_Store->set_character(note.id, *ctx.character);
+            }
+        }
+
+        if (note.map_tag)
+        {
+            ImGui::TextDisabled("%s",
+                                ("Map tag: " + std::to_string(*note.map_tag)).c_str());
+            ImGui::SameLine();
+            if (ImGui::SmallButton("Untag map")) { g_Store->clear_map_tag(note.id); }
+        }
+        else if (ctx.map_id)
+        {
+            if (ImGui::SmallButton("Tag: this map"))
+            {
+                g_Store->set_map_tag(note.id, *ctx.map_id);
+            }
+        }
+
         if (ImGui::Button("Delete")) { to_delete = note.id; }
 
         ImGui::Separator();
@@ -190,9 +323,37 @@ void RenderPanel()
     }
 }
 
+// 003-05 AC3/AC5: map-change auto-surface. Runs every frame (see AddonRender)
+// including while the panel is closed, so entering a map with tagged notes can
+// open it. Fires ONCE per real map *transition* — not every frame (debounced on
+// g_LastMapId), and not on the login baseline (the first live read only records
+// the current map, it does not pop). Never fires during loading (map 0 → nullopt).
+// It only ever OPENS the panel; it never closes/hides anything, so it surfaces
+// without gating (AC4). Entering a map with no tagged notes does nothing (AC3).
+void PollMapAutoSurface()
+{
+    const std::optional<std::uint32_t> map = ReadCurrentMapId();
+    if (!map) { return; } // not live / loading — leave the baseline untouched
+
+    const bool transition = g_LastMapId.has_value() && *g_LastMapId != *map;
+    g_LastMapId = map; // record (baseline on first read; debounce thereafter)
+    if (!transition || !g_Store) { return; }
+
+    const std::vector<notes::Note>& all = g_Store->notes();
+    const bool hasTagged =
+        std::any_of(all.begin(), all.end(), [&](const notes::Note& n) {
+            return notes::tagged_to_map(n, *map);
+        });
+    if (hasTagged) { g_PanelOpen = true; } // surface; never hide (AC4)
+}
+
 // Registered as an RT_Render callback; Nexus calls it every frame.
 void AddonRender()
 {
+    // Auto-surface must be evaluated every frame, even while closed, so a map
+    // transition can open the panel (AC3). Do it before the panel-open gate.
+    PollMapAutoSurface();
+
     if (!g_PanelOpen) { return; }
 
     const ImVec2 display = ImGui::GetIO().DisplaySize;
@@ -289,6 +450,8 @@ void AddonUnload()
     delete g_Store;
     g_Store = nullptr;
     g_EditBuffers.clear();
+    g_FilterThisCharacter = false; // 003-05: reset context state on unload
+    g_LastMapId.reset();
     g_API = nullptr;
 }
 

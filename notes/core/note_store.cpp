@@ -52,6 +52,24 @@ std::optional<Coordinate> parse_coordinate(const json& item)
     return out;
 }
 
+// Read a note's optional character tag (003-05). Absent or wrong-typed (not a
+// string) -> nullopt, migrating a v1/v2 record forward untouched and tolerating a
+// malformed value rather than rejecting the whole note (mirrors parse_coordinate).
+std::optional<std::string> parse_character(const json& item)
+{
+    const auto it = item.find("character");
+    if (it == item.end() || !it->is_string()) { return std::nullopt; }
+    return it->get<std::string>();
+}
+
+// Read a note's optional map tag (003-05). Absent or non-numeric -> nullopt.
+std::optional<std::uint32_t> parse_map_tag(const json& item)
+{
+    const auto it = item.find("map");
+    if (it == item.end() || !it->is_number_unsigned()) { return std::nullopt; }
+    return it->get<std::uint32_t>();
+}
+
 } // namespace
 
 NoteStore::NoteStore(std::filesystem::path path)
@@ -91,6 +109,8 @@ void NoteStore::load()
             n.text = item.value("text", std::string{});
             if (n.id.empty()) { continue; } // skip malformed entries, keep the rest
             n.coordinate = parse_coordinate(item);
+            n.character  = parse_character(item); // 003-05 context tags (optional)
+            n.map_tag    = parse_map_tag(item);
             next_id_ = std::max(next_id_, numeric_id(n.id) + 1);
             notes_.push_back(std::move(n));
         }
@@ -111,6 +131,10 @@ std::string NoteStore::serialize() const
                                     {"x", n.coordinate->x},
                                     {"y", n.coordinate->y}};
         }
+        // 003-05 context tags: each optional, omitted entirely when unset so an
+        // untagged note stays exactly `{id, text}` (and a v2 file re-writes clean).
+        if (n.character) { jn["character"] = *n.character; }
+        if (n.map_tag)   { jn["map"]       = *n.map_tag; }
         arr.push_back(std::move(jn));
     }
     doc["notes"] = std::move(arr);
@@ -174,6 +198,46 @@ bool NoteStore::clear_coordinate(const std::string& id)
                            [&](const Note& n) { return n.id == id; });
     if (it == notes_.end()) { return false; }
     it->coordinate.reset();
+    persist(); // write-through (AC3)
+    return true;
+}
+
+bool NoteStore::set_character(const std::string& id, std::string character)
+{
+    auto it = std::find_if(notes_.begin(), notes_.end(),
+                           [&](const Note& n) { return n.id == id; });
+    if (it == notes_.end()) { return false; }
+    it->character = std::move(character); // overwrites any existing tag (003-05 AC1)
+    persist();                            // write-through (AC3)
+    return true;
+}
+
+bool NoteStore::clear_character(const std::string& id)
+{
+    auto it = std::find_if(notes_.begin(), notes_.end(),
+                           [&](const Note& n) { return n.id == id; });
+    if (it == notes_.end()) { return false; }
+    it->character.reset();
+    persist(); // write-through (AC3)
+    return true;
+}
+
+bool NoteStore::set_map_tag(const std::string& id, std::uint32_t map_id)
+{
+    auto it = std::find_if(notes_.begin(), notes_.end(),
+                           [&](const Note& n) { return n.id == id; });
+    if (it == notes_.end()) { return false; }
+    it->map_tag = map_id; // overwrites any existing tag (003-05 AC1)
+    persist();            // write-through (AC3)
+    return true;
+}
+
+bool NoteStore::clear_map_tag(const std::string& id)
+{
+    auto it = std::find_if(notes_.begin(), notes_.end(),
+                           [&](const Note& n) { return n.id == id; });
+    if (it == notes_.end()) { return false; }
+    it->map_tag.reset();
     persist(); // write-through (AC3)
     return true;
 }

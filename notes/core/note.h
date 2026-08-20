@@ -24,16 +24,29 @@ struct Coordinate {
     float         y      = 0.0f; // continent-space Y
 };
 
-// A single sticky note (slice 003-01, enriched in 003-02).
+// A single sticky note (slice 003-01, enriched in 003-02, 003-05).
 //
 // The persisted JSON is versioned (NoteStore::kSchemaVersion) so record growth
 // migrates forward without loss: 003-01 shipped `{id, text}` at schema 1; 003-02
-// adds the OPTIONAL `coordinate` at schema 2. A note has at most one coordinate;
-// a text-only note simply has none (`std::nullopt`).
+// adds the OPTIONAL `coordinate` at schema 2; 003-05 adds the OPTIONAL context
+// tags `character` and `map` at schema 3. Every added field is optional, so the
+// growth is additive/compatible — an older file loads with the new fields simply
+// absent (`std::nullopt`), never rejected.
+//
+// The 003-05 tags are what let a note *know its context* (UC-9/UC-10): a note may
+// be tagged to the character it belongs to and/or the map it is about, so the
+// right notes auto-surface when you are on that character or enter that map. Both
+// are independent of the coordinate — a note can be tagged to a map it has no
+// stamped coordinate on, so `map_tag` is a separate field, not `coordinate.map_id`.
 struct Note {
     std::string               id;   // stable identifier, unique within a store
     std::string               text; // free-form UTF-8 body
     std::optional<Coordinate> coordinate; // 003-02: optional place-in-world stamp
+
+    // 003-05 context tags — both optional; a note may carry neither, either, or
+    // both (AC1). Auto-surface matches on these; it never gates access (AC4).
+    std::optional<std::string>   character; // UC-10: the character this note is for
+    std::optional<std::uint32_t> map_tag;   // UC-9: the map this note is about
 };
 
 // Human-readable rendering of a coordinate for display on a note (AC3). Pure and
