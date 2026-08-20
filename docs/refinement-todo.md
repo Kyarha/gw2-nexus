@@ -90,3 +90,33 @@
 ### Decision: Cursor marker behaviour during mouse-look (spec 004 A6)
 **Deferred:** During mouse-look GW2 hides and locks the OS cursor to screen-centre, so `GetMousePos()` stops updating and a follow-marker freezes/hides with the cursor. Spec 004 MVP (slice 004-01) accepts this — the marker naturally hides with the cursor. A nicer "pin-to-center during mouse-look" option needs mouse-look detection (MumbleLink does not directly expose it).
 **Resolution trigger:** A confirmed player desire for a visible marker during mouse-look, or a reliable mouse-look signal is found in the Nexus/MumbleLink surface.
+## Cursor Finder — zero-latency marker via a custom hardware cursor (future test)
+
+**Deferred:** The 004-02 marker is an in-frame Nexus/ImGui overlay, so it is
+inherently ~1 present-frame behind the OS-composited hardware cursor (visible as
+lag at low fps, e.g. under CrossOver). The user wants to test drawing the marker
+on the OS cursor plane instead — replace the Windows arrow with a custom HCURSOR
+that has the highlight baked around it, composited by the OS at zero latency.
+
+**Not as invasive as first framed:** this is standard Win32 (CreateIconIndirect
+from our 32bpp preset PNG, hotspot centred, regenerated on settings change) plus
+intercepting WM_SETCURSOR through Nexus's supported `WndProc_Register` hook to
+re-assert our cursor when GW2 sets its own. No memory patching / code detours.
+
+**Real tradeoffs (not hackiness):**
+- Replacing the arrow likely overrides GW2's *contextual* cursors (interact/
+  attack/target) unless we selectively pass those through — the hard part.
+- The highlight becomes part of the cursor bitmap: no live pulse animation,
+  size capped by OS cursor limits (typically <=256px).
+- CrossOver behaviour for custom cursors is untested.
+
+**Blocking unknown (resolve first):** does GW2 use the OS hardware cursor
+(replaceable) or draw its own software cursor in-engine (NOT replaceable — the
+approach fails and latency is unavoidable)? The arrow staying smooth regardless
+of game fps suggests the OS hardware cursor, which is promising — confirm before
+building.
+
+**Resolution trigger:** revisit when the user wants to prototype zero-latency
+tracking, or after 004-02 is validated on a native-Windows client and the
+in-frame latency is judged unacceptable there (not just under CrossOver). Likely
+its own slice; may warrant an ADR (overlay vs hardware-cursor architectures).
