@@ -234,11 +234,15 @@ void RenderNoteCard(const notes::Note& note,
     ImGui::Unindent(pad);
     ImGui::EndGroup();
 
-    // Card fill + border + tack, drawn behind the content over the full width.
+    // Card fill + border, drawn behind the content over the full width. The
+    // group's bounding box starts at the cursor captured by BeginGroup — i.e. the
+    // content-left BEFORE Indent — so gmin.x already IS the card's left edge; the
+    // card spans [gmin.x, gmin.x + avail] and the pad lives inside via Indent.
     const ImVec2 gmin = ImGui::GetItemRectMin();
     const ImVec2 gmax = ImGui::GetItemRectMax();
-    const ImVec2 cmin(gmin.x - pad, gmin.y);
-    const ImVec2 cmax(gmin.x - pad + avail, gmax.y);
+    const float  edge = 1.0f; // keep both borders off the scroll clip boundary
+    const ImVec2 cmin(gmin.x + edge, gmin.y);
+    const ImVec2 cmax(gmin.x + avail - edge, gmax.y);
     dl->ChannelsSetCurrent(0); // background
     th::GradientRectFilled(dl, cmin, cmax,
                            editing ? pal.form_top : pal.card_bg,
