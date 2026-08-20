@@ -160,10 +160,10 @@ TEST_CASE("theme: default palette matches the fidelity mockup tokens (AC4)")
 {
     constexpr Palette p = gw2_palette();
 
-    // Panel fill: rgba(22,19,14,0.90).
-    CHECK(p.panel_bg == Color{22, 19, 14, 230});
-    // Structural bronze border: rgba(96,76,44,0.9).
-    CHECK(p.border == Color{96, 76, 44, 230});
+    // Panel fill: v1.2 panel #191611 @ 0.90 (redline reconciliation, fidelity-map.md).
+    CHECK(p.panel_bg == Color{25, 22, 17, 230});
+    // Panel border: v1.2 gold-line #b4965a @ 0.40 (alpha8(0.40) = 102).
+    CHECK(p.border == Color{180, 150, 90, 102});
     // Bright gold trim / headings: #e6c86a.
     CHECK(p.text_gold == Color{230, 200, 106, 255});
     // Body text: #cfc7b6.

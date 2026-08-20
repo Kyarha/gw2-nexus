@@ -3,7 +3,10 @@
 // Our own basic themed design (ADR-0004): the default look every addon inherits
 // (principle #6), so Notes, Markers, and the tracker read as one GW2-native UI
 // rather than each reinventing chrome. The concrete token values are extracted
-// from the committed fidelity mockup docs/designs/notes-v1.0/ (slice 003-06 AC4).
+// from the committed fidelity mockup docs/designs/notes-v1.0/ (slice 003-06 AC4),
+// with the in-scope resting-panel tokens reconciled to the v1.2 redline
+// (docs/designs/notes_v1.2/redlines/fidelity-map.md): panel fill + panel border.
+// Card/title-bar gradients remain a tracked delta (flat top-stop for now).
 //
 // This header is deliberately ImGui-free and pure C++17: the palette is plain
 // data so it unit-tests off-game (macOS/clang), and the ImGui glue
@@ -60,13 +63,13 @@ struct CornerOrnament
 struct Palette
 {
     // Surfaces
-    Color panel_bg;      // rgba(22,19,14,0.90)
+    Color panel_bg;      // v1.2 panel #191611 @ 0.90 (translucent overlay)
     Color card_bg;       // rgba(33,30,24,0.96)
     Color input_bg;      // rgba(0,0,0,0.32)
     Color titlebar_bg;   // rgba(30,27,21,0.90)
 
     // Border / trim
-    Color border;        // rgba(96,76,44,0.9) — structural bronze
+    Color border;        // v1.2 panel border: gold-line #b4965a @ 0.40
     Color trim_line;     // rgba(150,120,70,0.28) — separators, hairlines
     FrameRings rings;
     CornerOrnament corner;
@@ -114,12 +117,12 @@ constexpr Palette gw2_palette()
 {
     Palette p{};
 
-    p.panel_bg    = {22, 19, 14, alpha8(0.90)};
+    p.panel_bg    = {25, 22, 17, alpha8(0.90)}; // v1.2 panel #191611
     p.card_bg     = {33, 30, 24, alpha8(0.96)};
     p.input_bg    = {0, 0, 0, alpha8(0.32)};
     p.titlebar_bg = {30, 27, 21, alpha8(0.90)};
 
-    p.border    = {96, 76, 44, alpha8(0.9)};
+    p.border    = {180, 150, 90, alpha8(0.40)}; // v1.2 panel border gold-line #b4965a @ 40%
     p.trim_line = {150, 120, 70, alpha8(0.28)};
 
     p.rings.outer_glow  = {120, 96, 56, alpha8(0.32)};

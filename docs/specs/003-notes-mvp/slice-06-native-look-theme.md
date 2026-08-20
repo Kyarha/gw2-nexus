@@ -190,6 +190,36 @@ to be attached alongside the design-eval evidence when the redline closes the ga
   (ImGui window-bg limitation).
 - The **`design_review` fidelity hard gate stays OPEN** until the redline.
 
+### Redline pass — fidelity reference moved v1.0 → v1.2 (2026-08-20)
+
+The `vellum:build-to-redline` pass re-anchored the fidelity reference from the
+v1.0 mockup to the **v1.2 redline cascade**
+([`docs/designs/notes_v1.2/redlines/`](../../designs/notes_v1.2/redlines/) —
+base + screen + 8 state files + reference render), now resolving and validating
+via `resolve_redline.py` / `validate_redline.py` for the default resting screen.
+
+- **Scope.** Only the **default resting screen** has a reference render, so it is
+  the one scoreable fidelity target. The other redline states (empty · loading ·
+  toast · delete-confirm · coord-menu · new-note · edit-note, and category
+  colours) are tied to features not yet built and are routed to their owning work
+  (003-04/-05 + the categories inbox item), per
+  [`fidelity-map.md`](../../designs/notes_v1.2/redlines/fidelity-map.md).
+- **Measured result.** The v1.0-derived palette already **matches v1.2 on every
+  in-scope colour token** except three deltas. Two were closed in this pass:
+  **panel fill** → v1.2 `panel` #191611 @ 0.90, and **panel border** → v1.2
+  `gold-line` #b4965a @ 40% (`shared/theme/theme.h`; off-game `test_theme`
+  updated, 9 cases / 116 assertions green). The third — **card & title-bar flat
+  fills vs. v1.2 vertical gradients** — remains a **tracked delta** (deferred).
+- **Approved divergence (must not be scored).** The redline's `overlay-root`
+  world-gradient backdrop is a mockup staging artifact; the real overlay is
+  transparent over the live game. Scoring must ignore everything outside the
+  panel + rail bounds. (Typeface / blur / box-shadow falloff remain DoD
+  non-targets as before.)
+- **Gate still OPEN.** No automated scorer runs here — the app is an in-game
+  C++/ImGui overlay (no web/Playwright capture; `servo:design-eval` not
+  installed). Attestation waits on a fresh **in-game capture** (Actions build →
+  CrossOver → screenshot vs `notes-overlay.render.png`) supplied by the owner.
+
 **Dormant / deferred mechanism (spec-sanctioned):** the textured 9-slice path
 (`compute_nine_slice` / `DrawNineSlice`) is implemented and unit-tested but has no
 runtime caller — the default frame uses primitive rings; it is gated on the open

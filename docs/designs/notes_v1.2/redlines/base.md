@@ -74,7 +74,7 @@ Two families. **Cinzel** (weights 500/600/700) for titles, labels, buttons.
 **Spectral** (400/500/600, italic 400) for body, inputs, rows. Letter-spacing is
 given in au at the style's nominal size (tracking is proportional if resized).
 
-| style | family | weight | size (au) | line-height | letter-spacing (au) | color |
+| style | font family | weight | size (au) | line-height | letter-spacing (au) | color token |
 |---|---|---|---|---|---|---|
 | panel-title | Cinzel | 700 | 20 | 1.0 | 0.6 | gold |
 | heading | Cinzel | 600 | 15 | 1.2 | 0.3 | parchment |
