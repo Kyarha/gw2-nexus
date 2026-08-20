@@ -78,3 +78,13 @@ fields), so the documented shape and the helper output agree.
 **Scope:** notes/core/note_store.cpp; shared/persistence/atomic_file.*
 
 **Commit:** 24f144b
+
+### 2026-08-20 — Cursor marker latency: velocity prediction (to be toggle-gated)
+
+**Decision:** The live cursor marker leads the pointer along a smoothed per-frame velocity (~1 frame look-ahead) to hide the frame-rate-bound latency of an in-process overlay. Sampled from the OS-instantaneous cursor (GetCursorPos->ScreenToClient), not ImGui's event-driven io.MousePos. Shipping unconditionally first to evaluate feel; once proven it moves behind an off-by-default 'Reduce lag' toggle so native-Windows users are unaffected.
+
+**Context:** In-game under CrossOver the marker trailed the hardware arrow once a scene loaded and fps dropped; the OS composites the cursor after the game presents, so a per-frame overlay is inherently ~1 frame behind, worse at low fps. Rejected: moving to a later Nexus render stage (RT_PostRender/PreRender fire outside the ImGui frame, so ImGui draws there are invalid/dropped) and accept-as-is. Prediction self-scales (large lead at low fps, ~0 at high fps) so it is a near-no-op on a fast native client.
+
+**Scope:** cursor addon — cursor/src/entry.cpp live-marker draw anchor (PredictedPointer)
+
+**Commit:** PR #8 (branch claude/cursor-appearance-004-02)
