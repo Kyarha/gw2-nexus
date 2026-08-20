@@ -86,3 +86,7 @@
 **Resolution trigger:** First Notes spec that implements coordinate sharing. Spike before committing UC-7.
 **Resolved by:** [ADR-0005: Coordinate action mechanism: overlay marker + clipboard, not map-control or chat-injection](decisions/adr-0005-coordinate-action-mechanism.md).
 
+
+### Decision: Cursor marker behaviour during mouse-look (spec 004 A6)
+**Deferred:** During mouse-look GW2 hides and locks the OS cursor to screen-centre, so `GetMousePos()` stops updating and a follow-marker freezes/hides with the cursor. Spec 004 MVP (slice 004-01) accepts this — the marker naturally hides with the cursor. A nicer "pin-to-center during mouse-look" option needs mouse-look detection (MumbleLink does not directly expose it).
+**Resolution trigger:** A confirmed player desire for a visible marker during mouse-look, or a reliable mouse-look signal is found in the Nexus/MumbleLink surface.

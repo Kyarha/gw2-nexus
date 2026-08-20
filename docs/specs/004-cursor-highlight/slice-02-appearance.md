@@ -1,0 +1,99 @@
+---
+status: DRAFT
+dependencies: [004-01]
+last_verified:
+arch_review: true
+frame_review: true
+---
+
+<!-- jig grounding (spec 064-02 / ADR-0020): ground factual claims about runnable
+     surfaces by probe first (run it / read source) or a citation, else mark them
+     as assumptions in this slice's `## Assumptions` — never assert unverified. -->
+
+## Slice 004-02 — appearance
+
+**Goal:** Deliver the mockup's full **APPEARANCE** block: a **5-preset style
+picker**, **Colour**, **Size**, **Opacity**, **Fill centre** + **Fill opacity** +
+**Fill colour**, and **Reset to defaults**, all persisted and shown live in the
+preview. Bundles the PNG art set (rasterized from the five v1.0 `overlay-*.svg`)
+and resolves the layered-recolor mechanism. Completes the "customizable" half of
+UC-14. Values per
+[Cursor Settings.dc.html](../../designs/cursors_v1.0/Cursor Settings.dc.html).
+
+**DoR (Definition of Ready):**
+- ✅ 004-01 DONE — the addon draws the default preset, has a settings panel with
+  live preview, and persists a versioned settings record.
+- ✅ **Preset art available** — the five v1.0 presets
+  ([cursors_v1.0](../../designs/cursors_v1.0/)) rasterized to PNG, authored as
+  **layered white/alpha masks** per the recolor mechanism (AC6): a fixed outline
+  layer + a tintable colour layer (+ a tintable fill layer). No game textures
+  bundled ([ADR-0004](../../decisions/adr-0004-gw2-art-asset-sourcing.md)).
+
+**Acceptance Criteria:**
+
+1. **Preset style picker (all five).** The panel lets the player pick among
+   **Pulse Ring, Corner Reticle, Beacon Crosshair, Radar Dash, Soft Halo**; the
+   selected preset is drawn as the marker. Each preset carries its design default
+   hue (magenta / cyan / white / violet / teal). Adding a preset is data (art +
+   registry entry), not new draw code.
+2. **Colour.** A colour control recolors the marker's colour layer (design
+   default = the preset's signature hue). Applied as the `AddImage` tint
+   (`ImGui::GetColorU32`); the baked dark outline stays dark (AC6).
+3. **Size.** A size control scales the drawn quad; the marker stays centered on
+   the pointer at all sizes (004-01 AC2 anchoring preserved). Range/units match
+   the mockup's `sizePx`.
+4. **Opacity.** An opacity control drives the overall marker alpha
+   (`opacityPct`), independent of colour.
+5. **Fill centre + fill opacity + fill colour.** A "Fill centre" toggle fills the
+   preset's interior with a translucent colour; "Fill opacity" (`fillOpacityPct`)
+   and a separate "Fill colour" control it. Off by default. Implemented as the
+   optional fill layer (AC6).
+6. **Layered recolor mechanism (the one art subtlety, spec A2).** Each preset is
+   composited from a fixed **outline layer** (drawn untinted, keeps the shape
+   readable on any background) + a **colour layer** (tinted by AC2) + an optional
+   **fill layer** (tinted by AC5). Soft Halo's gradient is an alpha-graded colour
+   layer. If layering proves impractical at implementation, fall back to
+   baked-colour PNGs with a reduced (or removed) live-recolor knob — recorded as a
+   deviation, not a silent scope cut.
+7. **Reset to defaults.** A control restores all appearance settings to the v1.0
+   defaults (Pulse Ring, its signature hue, default size/opacity, fill off).
+8. **All settings persist and reload.** Preset, colour, size, opacity, fill
+   toggle/opacity/colour are written through to the settings JSON (schema version
+   bumped + migrated from the 004-01 record) and restored next session; the live
+   preview reflects them immediately ("settings apply instantly", mockup).
+
+**Assumptions (per-slice):** spec A2 (layered recolor is the planned mechanism,
+confirmed when the art lands; fallback noted in AC6). See spec `## Assumptions`.
+
+**DoD:**
+- [ ] All ACs pass; full suite green.
+- [ ] `cursor-core` tests cover every appearance field's round-trip through the
+      settings record + the 004-01→004-02 migration + Reset-to-defaults; each
+      shown red→green.
+- [ ] In-game confirmation that each of the five presets reads against combat
+      clutter and that live recolor preserves the dark outline (deviation log).
+- [ ] Reviewed by `reviewer` subagent (compliance + craft; arch pass — art
+      pipeline / layer compositing is an architecture-shaped concern).
+- [ ] Deviation log + reconciliation sweep produced.
+- [ ] Preset PNGs committed under the cursor addon with authorship noted; the
+      SVG→PNG rasterization step documented (repeatable).
+
+**Anti-horizontal-phasing check:** After this slice the player picks any of the
+five presets, recolors it, resizes/fades it, and optionally fills its centre —
+all live and persisted — a self-contained, visible customization.
+
+### Deviation log (after reconciliation)
+
+_TODO at reconciliation._
+
+### Reconciliation sweep
+
+| Artifact | Disposition | Rationale |
+|----------|-------------|-----------|
+| `docs/specs/README.md` | `updated` | _TODO: regenerated by `workflow.py status-board`._ |
+| `docs/product-vision.md` | `no-op` | _TODO: checked for scope drift._ |
+| `docs/architecture.md` | `no-op` | _TODO: note the layered-mask art pipeline if the data model lists assets._ |
+| `docs/decisions/lightweight-decisions.md` | `no-op` | _TODO: record default preset/hues + recolor mechanism if settled._ |
+| `docs/designs/cursors_v1.0` | `no-op` | _TODO: note any deviation from the mockup values._ |
+| `docs/memory/**` | `no-op` | _TODO: memory-sync (SVG→PNG step, recolor layering)._ |
+| `docs/refinement-todo.md` | `no-op` | _TODO: checked._ |

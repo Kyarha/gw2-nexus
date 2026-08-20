@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{ background:#0d0e13; color:#e9e9ef; font-family:"Barlow Semi Condensed",system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  a{ color:#22e0ff; text-decoration:none; }
+  a:hover{ color:#7febff; }
+  input[type=range]{ accent-color:#c9c9d4; }
+  @keyframes gwpulse{ 0%,100%{ transform:scale(.9); } 50%{ transform:scale(1.07); } }
+  @keyframes gwspin{ to{ transform:rotate(360deg); } }
+  @keyframes gwbreathe{ 0%,100%{ transform:scale(.95); } 50%{ transform:scale(1.06); } }
+</style>
+</helmet>
+<div style="min-height:100vh; padding:34px 40px 56px;">
+  <div style="max-width:1180px; margin:0 auto;">
+
+    <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap; border-bottom:1px solid #24252e; padding-bottom:22px;">
+      <div>
+        <div style="font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.24em; color:#6d6e7c; text-transform:uppercase;">Guild Wars 2 · Nexus Cursor Module</div>
+        <h1 style="margin:8px 0 6px; font-size:34px; font-weight:700; letter-spacing:-.01em;">Cursor Finder — Overlay Concepts</h1>
+        <p style="margin:0; max-width:560px; font-size:14.5px; line-height:1.5; color:#a2a3b0;">Five overlay images that sit centered on your pointer so you can find it in a zerg. Toggle the scene and drag Size / Opacity to test how each reads against real combat clutter.</p>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:14px; min-width:270px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.18em; color:#6d6e7c; text-transform:uppercase; width:58px;">Scene</span>
+          <div style="display:flex; gap:4px; background:#181920; padding:4px; border-radius:9px; border:1px solid #262731;">
+            <button onClick="{{ setDesert }}" style="{{ desertStyle }}">Desert zerg</button>
+            <button onClick="{{ setUnder }}" style="{{ underStyle }}">Underwater</button>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.18em; color:#6d6e7c; text-transform:uppercase; width:58px;">Size</span>
+          <input type="range" min="40" max="180" value="{{ size }}" onChange="{{ onSize }}" style="flex:1;">
+          <span style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:#c9c9d4; width:42px; text-align:right;">{{ sizePx }}</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.18em; color:#6d6e7c; text-transform:uppercase; width:58px;">Opacity</span>
+          <input type="range" min="30" max="100" value="{{ opacityVal }}" onChange="{{ onOpacity }}" style="flex:1;">
+          <span style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:#c9c9d4; width:42px; text-align:right;">{{ opacityPct }}</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.18em; color:#6d6e7c; text-transform:uppercase; width:58px;">Fill</span>
+          <div style="display:flex; gap:4px; background:#181920; padding:4px; border-radius:9px; border:1px solid #262731;">
+            <button onClick="{{ setFillOff }}" style="{{ fillOffStyle }}">Off</button>
+            <button onClick="{{ setFillOn }}" style="{{ fillOnStyle }}">On</button>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.14em; color:#6d6e7c; text-transform:uppercase; width:58px; line-height:1.15;">Fill&nbsp;op.</span>
+          <input type="range" min="0" max="100" value="{{ fillOpacityVal }}" onChange="{{ onFillOpacity }}" style="flex:1;">
+          <span style="font-family:'IBM Plex Mono',monospace; font-size:11px; color:#c9c9d4; width:42px; text-align:right;">{{ fillOpacityPct }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:20px; margin-top:30px;">
+
+      <!-- 1 — Pulse Ring -->
+      <div style="border:1px solid #262731; border-radius:14px; overflow:hidden; background:#141520;">
+        <div style="position:relative; aspect-ratio:1; background-image:{{ sceneCss }}; background-size:cover; background-position:34% 42%;">
+          <span style="position:absolute; top:10px; left:10px; font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:500; color:#0d0e13; background:#e9e9ef; width:22px; height:22px; border-radius:6px; display:flex; align-items:center; justify-content:center;">1</span>
+          <div style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:{{ sizePx }}; height:{{ sizePx }}; opacity:{{ opacity }};">
+            <svg viewBox="0 0 200 200" width="100%" height="100%" style="overflow:visible; filter:{{ outlineCss }}; animation:{{ pulseAnim }}; transform-origin:center;">
+              <sc-if value="{{ showFill }}" hint-placeholder-val="{{ false }}"><circle cx="100" cy="100" r="74" fill="#ff2d9b" opacity="{{ fillOpacity }}"/></sc-if>
+              <circle cx="100" cy="100" r="74" fill="none" stroke="#ff2d9b" stroke-width="11"/>
+              <circle cx="100" cy="100" r="74" fill="none" stroke="#ffa9d8" stroke-width="3"/>
+            </svg>
+          </div>
+          <sc-if value="{{ showArrow }}" hint-placeholder-val="{{ true }}"><svg viewBox="0 0 24 34" width="22" height="31" style="position:absolute; left:50%; top:50%; transform:translate(-3px,-3px); filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.7));"><polygon points="2,2 2,27 8.5,20.5 13,30 16.5,28.5 12,19 20,19" fill="#f4f4f7" stroke="#15151c" stroke-width="1.4" stroke-linejoin="round"/></svg></sc-if>
+        </div>
+        <div style="padding:13px 15px 15px;">
+          <div style="display:flex; align-items:center; justify-content:space-between;">
+            <span style="font-size:17px; font-weight:700;">Pulse Ring</span>
+            <span style="width:13px; height:13px; border-radius:50%; background:#ff2d9b;"></span>
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.12em; color:#6d6e7c; margin:5px 0 8px;">MAGENTA · STATIC</div>
+          <p style="margin:0; font-size:12.5px; line-height:1.45; color:#9a9ba8;">Hollow ring, hot pink — a color GW2 never uses. Open center keeps the pixel under your cursor readable; the bold ring holds its shape against clutter.</p>
+        </div>
+      </div>
+
+      <!-- 2 — Corner Reticle -->
+      <div style="border:1px solid #262731; border-radius:14px; overflow:hidden; background:#141520;">
+        <div style="position:relative; aspect-ratio:1; background-image:{{ sceneCss }}; background-size:cover; background-position:62% 55%;">
+          <span style="position:absolute; top:10px; left:10px; font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:500; color:#0d0e13; background:#e9e9ef; width:22px; height:22px; border-radius:6px; display:flex; align-items:center; justify-content:center;">2</span>
+          <div style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:{{ sizePx }}; height:{{ sizePx }}; opacity:{{ opacity }};">
+            <svg viewBox="0 0 200 200" width="100%" height="100%" style="overflow:visible; filter:{{ outlineCss }};">
+              <sc-if value="{{ showFill }}" hint-placeholder-val="{{ false }}"><rect x="40" y="40" width="120" height="120" rx="14" fill="#22e0ff" opacity="{{ fillOpacity }}"/></sc-if>
+              <g fill="none" stroke="#22e0ff" stroke-width="11" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M40 64 V40 H64"/><path d="M136 40 H160 V64"/><path d="M160 136 V160 H136"/><path d="M64 160 H40 V136"/>
+              </g>
+              <circle cx="100" cy="100" r="5.5" fill="#22e0ff"/>
+            </svg>
+          </div>
+          <sc-if value="{{ showArrow }}" hint-placeholder-val="{{ true }}"><svg viewBox="0 0 24 34" width="22" height="31" style="position:absolute; left:50%; top:50%; transform:translate(-3px,-3px); filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.7));"><polygon points="2,2 2,27 8.5,20.5 13,30 16.5,28.5 12,19 20,19" fill="#f4f4f7" stroke="#15151c" stroke-width="1.4" stroke-linejoin="round"/></svg></sc-if>
+        </div>
+        <div style="padding:13px 15px 15px;">
+          <div style="display:flex; align-items:center; justify-content:space-between;">
+            <span style="font-size:17px; font-weight:700;">Corner Reticle</span>
+            <span style="width:13px; height:13px; border-radius:50%; background:#22e0ff;"></span>
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.12em; color:#6d6e7c; margin:5px 0 8px;">CYAN · STATIC</div>
+          <p style="margin:0; font-size:12.5px; line-height:1.45; color:#9a9ba8;">Four brackets frame the pointer like a targeting box, with a dot marking the exact click point. Almost nothing is covered — good if you dislike motion.</p>
+        </div>
+      </div>
+
+      <!-- 3 — Beacon Crosshair -->
+      <div style="border:1px solid #262731; border-radius:14px; overflow:hidden; background:#141520;">
+        <div style="position:relative; aspect-ratio:1; background-image:{{ sceneCss }}; background-size:cover; background-position:18% 72%;">
+          <span style="position:absolute; top:10px; left:10px; font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:500; color:#0d0e13; background:#e9e9ef; width:22px; height:22px; border-radius:6px; display:flex; align-items:center; justify-content:center;">3</span>
+          <div style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:{{ sizePx }}; height:{{ sizePx }}; opacity:{{ opacity }};">
+            <svg viewBox="0 0 200 200" width="100%" height="100%" style="overflow:visible; filter:{{ outlineCss }};">
+              <sc-if value="{{ showFill }}" hint-placeholder-val="{{ false }}"><circle cx="100" cy="100" r="90" fill="#f2f2f6" opacity="{{ fillOpacity }}"/></sc-if>
+              <g fill="#f2f2f6">
+                <polygon points="93,18 107,18 100,72"/><polygon points="93,182 107,182 100,128"/>
+                <polygon points="18,93 18,107 72,100"/><polygon points="182,93 182,107 128,100"/>
+              </g>
+              <circle cx="100" cy="100" r="4.5" fill="#f2f2f6"/>
+            </svg>
+          </div>
+          <sc-if value="{{ showArrow }}" hint-placeholder-val="{{ true }}"><svg viewBox="0 0 24 34" width="22" height="31" style="position:absolute; left:50%; top:50%; transform:translate(-3px,-3px); filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.7));"><polygon points="2,2 2,27 8.5,20.5 13,30 16.5,28.5 12,19 20,19" fill="#f4f4f7" stroke="#15151c" stroke-width="1.4" stroke-linejoin="round"/></svg></sc-if>
+        </div>
+        <div style="padding:13px 15px 15px;">
+          <div style="display:flex; align-items:center; justify-content:space-between;">
+            <span style="font-size:17px; font-weight:700;">Beacon Crosshair</span>
+            <span style="width:13px; height:13px; border-radius:50%; background:#f2f2f6; border:1px solid #444;"></span>
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.12em; color:#6d6e7c; margin:5px 0 8px;">WHITE · STATIC</div>
+          <p style="margin:0; font-size:12.5px; line-height:1.45; color:#9a9ba8;">Four tapered spokes point inward to a gap, funneling your eye to the exact tip. White + dark outline reads on any background color.</p>
+        </div>
+      </div>
+
+      <!-- 4 — Radar Dash -->
+      <div style="border:1px solid #262731; border-radius:14px; overflow:hidden; background:#141520;">
+        <div style="position:relative; aspect-ratio:1; background-image:{{ sceneCss }}; background-size:cover; background-position:82% 44%;">
+          <span style="position:absolute; top:10px; left:10px; font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:500; color:#0d0e13; background:#e9e9ef; width:22px; height:22px; border-radius:6px; display:flex; align-items:center; justify-content:center;">4</span>
+          <div style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:{{ sizePx }}; height:{{ sizePx }}; opacity:{{ opacity }};">
+            <svg viewBox="0 0 200 200" width="100%" height="100%" style="overflow:visible; filter:{{ outlineCss }};">
+              <sc-if value="{{ showFill }}" hint-placeholder-val="{{ false }}"><circle cx="100" cy="100" r="72" fill="#b26bff" opacity="{{ fillOpacity }}"/></sc-if>
+              <circle cx="100" cy="100" r="72" fill="none" stroke="#b26bff" stroke-width="11" stroke-linecap="round" stroke-dasharray="26 22" style="animation:{{ spinAnim }}; transform-origin:center;"/>
+              <circle cx="100" cy="100" r="6" fill="#b26bff"/>
+            </svg>
+          </div>
+          <sc-if value="{{ showArrow }}" hint-placeholder-val="{{ true }}"><svg viewBox="0 0 24 34" width="22" height="31" style="position:absolute; left:50%; top:50%; transform:translate(-3px,-3px); filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.7));"><polygon points="2,2 2,27 8.5,20.5 13,30 16.5,28.5 12,19 20,19" fill="#f4f4f7" stroke="#15151c" stroke-width="1.4" stroke-linejoin="round"/></svg></sc-if>
+        </div>
+        <div style="padding:13px 15px 15px;">
+          <div style="display:flex; align-items:center; justify-content:space-between;">
+            <span style="font-size:17px; font-weight:700;">Radar Dash</span>
+            <span style="width:13px; height:13px; border-radius:50%; background:#b26bff;"></span>
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.12em; color:#6d6e7c; margin:5px 0 8px;">VIOLET · STATIC</div>
+          <p style="margin:0; font-size:12.5px; line-height:1.45; color:#9a9ba8;">A dashed ring in a rare violet hue. The broken dashes read differently from GW2's solid rings, so it stands out without spinning.</p>
+        </div>
+      </div>
+
+      <!-- 5 — Soft Halo -->
+      <div style="border:1px solid #262731; border-radius:14px; overflow:hidden; background:#141520;">
+        <div style="position:relative; aspect-ratio:1; background-image:{{ sceneCss }}; background-size:cover; background-position:50% 86%;">
+          <span style="position:absolute; top:10px; left:10px; font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:500; color:#0d0e13; background:#e9e9ef; width:22px; height:22px; border-radius:6px; display:flex; align-items:center; justify-content:center;">5</span>
+          <div style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:{{ sizePx }}; height:{{ sizePx }}; opacity:{{ opacity }};">
+            <svg viewBox="0 0 200 200" width="100%" height="100%" style="overflow:visible; animation:{{ breatheAnim }}; transform-origin:center;">
+              <defs><radialGradient id="haloE" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stop-color="#5cf0dc" stop-opacity="0.95"/>
+                <stop offset="52%" stop-color="#2fb7c8" stop-opacity="0.55"/>
+                <stop offset="100%" stop-color="#2fb7c8" stop-opacity="0"/>
+              </radialGradient></defs>
+              <circle cx="100" cy="100" r="96" fill="url(#haloE)"/>
+              <sc-if value="{{ showFill }}" hint-placeholder-val="{{ false }}"><circle cx="100" cy="100" r="52" fill="#3fd4c9" opacity="{{ fillOpacity }}"/></sc-if>
+              <circle cx="100" cy="100" r="52" fill="none" stroke="#eafffb" stroke-width="2.5" stroke-opacity="0.7"/>
+            </svg>
+          </div>
+          <sc-if value="{{ showArrow }}" hint-placeholder-val="{{ true }}"><svg viewBox="0 0 24 34" width="22" height="31" style="position:absolute; left:50%; top:50%; transform:translate(-3px,-3px); filter:drop-shadow(0 1px 1.5px rgba(0,0,0,.7));"><polygon points="2,2 2,27 8.5,20.5 13,30 16.5,28.5 12,19 20,19" fill="#f4f4f7" stroke="#15151c" stroke-width="1.4" stroke-linejoin="round"/></svg></sc-if>
+        </div>
+        <div style="padding:13px 15px 15px;">
+          <div style="display:flex; align-items:center; justify-content:space-between;">
+            <span style="font-size:17px; font-weight:700;">Soft Halo</span>
+            <span style="width:13px; height:13px; border-radius:50%; background:#3fd4c9;"></span>
+          </div>
+          <div style="font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.12em; color:#6d6e7c; margin:5px 0 8px;">TEAL · GLOW</div>
+          <p style="margin:0; font-size:12.5px; line-height:1.45; color:#9a9ba8;">A soft glowing orb behind the pointer — the closest to the reference plugin. Least intrusive, but can wash out over bright water; lower the opacity there.</p>
+        </div>
+      </div>
+
+    </div>
+
+    <p style="margin:28px 0 0; font-size:12.5px; line-height:1.5; color:#74757f; max-width:640px;">Design rule shared across all five: a dark outline so the shape survives on any color, and a hue GW2's own effects avoid (no red — that reads as enemy AoE). Tell me which number you like (or a mix) and I'll produce it as a ready-to-drop PNG set.</p>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;$preview&quot;: { &quot;width&quot;: 1180, &quot;height&quot;: 860 },
+  &quot;outline&quot;: { &quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Overlay&quot; },
+  &quot;arrow&quot;: { &quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Overlay&quot; }
+}">
+class Component extends DCLogic {
+  state = { scene: 'desert', size: 110, opacity: 85, fill: false, fillOpacity: 30 };
+  renderVals() {
+    const scenes = { desert: 'url("scene-desert.webp")', underwater: 'url("scene-underwater.png")' };
+    const isDesert = this.state.scene === 'desert';
+    const outline = this.props.outline ?? true;
+    const seg = (active) => ({
+      padding: '7px 15px', border: 'none', borderRadius: '7px', cursor: 'pointer',
+      font: '600 13px/1 "Barlow Semi Condensed", sans-serif', letterSpacing: '.01em',
+      background: active ? '#e6e6ec' : 'transparent', color: active ? '#14141c' : '#b6b7c2',
+      transition: 'background .15s, color .15s'
+    });
+    return {
+      sceneCss: scenes[this.state.scene],
+      desertStyle: seg(isDesert),
+      underStyle: seg(!isDesert),
+      size: this.state.size,
+      sizePx: this.state.size + 'px',
+      opacity: this.state.opacity / 100,
+      opacityVal: this.state.opacity,
+      opacityPct: this.state.opacity + '%',
+      showArrow: this.props.arrow ?? true,
+      showFill: this.state.fill,
+      fillOpacity: this.state.fillOpacity / 100,
+      fillOpacityVal: this.state.fillOpacity,
+      fillOpacityPct: this.state.fillOpacity + '%',
+      fillOffStyle: seg(!this.state.fill),
+      fillOnStyle: seg(this.state.fill),
+      setFillOff: () => this.setState({ fill: false }),
+      setFillOn: () => this.setState({ fill: true }),
+      onFillOpacity: (e) => this.setState({ fillOpacity: +e.target.value }),
+      outlineCss: outline ? 'drop-shadow(0 0 2px rgba(0,0,0,.9)) drop-shadow(0 0 1px rgba(0,0,0,.95))' : 'none',
+      pulseAnim: 'none',
+      spinAnim: 'none',
+      breatheAnim: 'none',
+      setDesert: () => this.setState({ scene: 'desert' }),
+      setUnder: () => this.setState({ scene: 'underwater' }),
+      onSize: (e) => this.setState({ size: +e.target.value }),
+      onOpacity: (e) => this.setState({ opacity: +e.target.value }),
+    };
+  }
+}
+</script>
+</body>
+</html>
