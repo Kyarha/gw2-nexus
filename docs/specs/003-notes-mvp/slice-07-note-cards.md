@@ -96,8 +96,74 @@ None
 
 ### Deviation log (after reconciliation)
 
-_(to be written at reconciliation)_
+Original ACs preserved above; the following are deviations and deferrals found
+in the in-game review + compliance/craft review passes.
+
+**Fixed during the slice:**
+- **New → Cancel no longer strands an empty note.** New note creates an empty
+  note and opens the editor; cancelling it now removes the note when its
+  committed text is still empty (deferred to the post-loop removal, like Delete),
+  so repeated New→Cancel no longer accumulates persisted "(empty note)" cards.
+- **Card rect / border fix** (`9d61344`): `Indent()` ran after `BeginGroup()`, so
+  the group bbox started at the pre-indent content-left; the card rect over-
+  subtracted `pad` and shifted every card 15 au left (left border off the scroll
+  clip, right border flush with the action icons). Rect now spans
+  `[gmin.x, gmin.x + avail]` with a 1 au inset → symmetric inner margins.
+- **Tack removed / action icons repositioned** (`3f2065d`): the top-edge tack was
+  clipped by the scroll region; the icon row drifted past the border via ImGui
+  `SameLine` spacing. Icons are now placed by explicit screen coords inside the
+  padding.
+
+**Deliberate deviations from the literal ACs:**
+- **AC3 "insert at front" → append + newest-first render.** The store still
+  *appends* (`NoteStore::add`); the list *renders* newest-first via reverse
+  iteration, so a new note lands at the top in view. This satisfies the intent
+  (never off-screen at the bottom) without changing persistence/store order, but
+  it (a) does not literally insert at the vector front and (b) reverses the
+  display order of pre-existing notes vs 003-01 (touches AC5's "existing
+  behaviour preserved" — display order only, not data). Recorded as a lightweight
+  decision (`docs/decisions/lightweight-decisions.md`).
+
+**Deferred to the single v1.2 redline pass (shared with 003-06 — fidelity, not
+AC-breaking):**
+- **AC1 tack pin not drawn.** `shared::theme::DrawTack` is defined but not called
+  (removed as clipped, above). The tack is a v1.2 design element whose correct
+  placement (on/inside the top border) is a fidelity detail for the redline pass;
+  the primitive is retained for it.
+- **Delete-confirm strip container.** The strip currently renders the copy +
+  Delete/Keep buttons; the `danger_bg` fill + `danger_line` border container is
+  not yet drawn (the `danger_bg` token is added per AC6 but unused at the draw
+  site, like `DrawTack`). Deferred to the redline sweep.
+- **Delete-button hover token.** `ImGuiCol_ButtonHovered` on the Delete button
+  reuses `danger_line` (a border token) as a hover fill — harmless; revisit in
+  the redline pass.
+- **Full card/title-bar gradient fidelity** remains part of the same redline pass
+  (see [`fidelity-map.md`](../../designs/notes_v1.2/redlines/fidelity-map.md)).
+
+**Deferred to a feature slice:**
+- **Clearing a stamped coordinate needs a confirmation** (owner hit an accidental
+  Clear). Routed to 003-04 (coordinate actions) via
+  [inbox 2026-08-20](../../inbox.md); explicitly out of 003-07.
 
 ### Reconciliation sweep
 
-_(to be written at reconciliation)_
+Drift-prone surfaces checked, with dispositions:
+
+- **`shared/theme` palette** — *updated*: six v1.2 tokens added
+  (`card_bottom`, `form_top/bottom`, `danger_*`, `muted_2`, `tack_*`) + draw
+  helpers (`GradientRectFilled`, `IconButton`, `with_alpha`); asserted in
+  `shared/tests/test_theme.cpp`.
+- **notes-core** — *updated*: `notes::split_title_body` (pure, UTF-8-safe) +
+  seven-subcase doctest in `notes/tests/test_note_store.cpp`.
+- **`notes/src/entry.cpp` render** — *updated*: card list, view/edit split,
+  delete-confirm, new-note-at-top.
+- **`docs/decisions/lightweight-decisions.md`** — *updated*: newest-first
+  ordering, title = first line, tack deferral.
+- **`docs/inbox.md`** — *updated*: Clear-coordinate confirmation item.
+- **`docs/architecture.md`** — *no-op*: no module-boundary or public-contract
+  change; palette fields + draw helpers live behind the existing `shared::theme`
+  surface established by 003-06.
+- **ADR** — *no-op*: no load-bearing decision with rejected alternatives; the
+  ordering / title-derivation choices are recorded as lightweight decisions.
+- **Design fidelity (`design_review`)** — *deferred*: aligned in the single v1.2
+  redline pass alongside 003-06; not attested here.

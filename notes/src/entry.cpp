@@ -139,6 +139,11 @@ void RenderNoteCard(const notes::Note& note,
         {
             g_EditBuffers.erase(note.id); // drop uncommitted edits
             g_EditingId.clear();
+            // A new note is created empty and opened for edit; cancelling it must
+            // not leave a persisted "(empty note)" behind. Drop any note whose
+            // committed text is still empty on cancel (defer to the post-loop
+            // removal, like Delete).
+            if (note.text.empty()) { to_delete = note.id; }
         }
     }
     else
@@ -303,6 +308,12 @@ void RenderPanel()
                       ImVec2(0.0f, ImGui::GetContentRegionAvail().y), false);
     // Newest-first: the most recently added note (appended by the store) renders
     // at the top, so New note lands in view (AC3).
+    //
+    // We reverse-iterate the store's live vector while cards may call edit /
+    // set_coordinate / clear_coordinate in-loop. That is safe only because none
+    // of those RESIZE the vector (they mutate a Note in place); the two resizing
+    // ops are kept out of the walk — add() runs from the New-note button above,
+    // and remove() is deferred via `to_delete` until after the loop.
     const std::vector<notes::Note>& all = g_Store->notes();
     for (auto it = all.rbegin(); it != all.rend(); ++it)
     {
