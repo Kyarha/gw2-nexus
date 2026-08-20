@@ -143,6 +143,9 @@ combines place- and character-aware notes, world markers, and account-aware
   as world pins.
 - UC-13: A player can open their notes anywhere, on any character, from a
   toolbar button or hotkey.
+- UC-14: A player can make the mouse cursor easier to find in visually busy
+  scenes, with a customizable on-screen highlight centered on the actual click
+  point.
 
 ## Stack
 
