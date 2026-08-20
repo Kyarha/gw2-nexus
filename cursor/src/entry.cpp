@@ -84,6 +84,27 @@ const PresetTex kPresetTex[] = {
       {"TEX_CURSOR_SOFT_HALO_COLOUR",         cursor_art::kSoftHaloColour,         cursor_art::kSoftHaloColour_len} },
 };
 
+// Per-preset capabilities — the presets are geometrically different, so outline
+// and fill do not apply uniformly. Soft Halo is a soft graded glow: ONE colour,
+// no outline (its v1.0 accent ring reads wrong as a tinted, fixed-size inner
+// outline) and no separate fill (the halo IS the fill; a second fill disc just
+// double-counts opacity with a different colour — confusing). The fill extent is
+// a fraction of the marker size, tuned so the fill sits inside each preset's
+// shape (the reticle's fill is a SQUARE, not an oversized disc).
+enum class FillShape { None, Disc, Square };
+struct PresetCaps {
+    bool      has_outline;
+    FillShape fill_shape;
+    float     fill_extent; // fraction of size: disc radius, or square half-side
+};
+constexpr PresetCaps kPresetCaps[] = {
+    /* PulseRing       */ { true,  FillShape::Disc,   0.30f },
+    /* CornerReticle   */ { true,  FillShape::Square, 0.24f },
+    /* BeaconCrosshair */ { true,  FillShape::Disc,   0.18f },
+    /* RadarDash       */ { true,  FillShape::Disc,   0.30f },
+    /* SoftHalo        */ { false, FillShape::None,   0.00f },
+};
+
 // Cached preset textures, filled lazily by Textures_GetOrCreateFromMemory from
 // the embedded PNG bytes. Indexed by (int)Preset.
 struct PresetTexCache {
@@ -155,13 +176,13 @@ ImVec2 CurrentPointer()
 // a dark outline stroke with a coloured core stroke on top. Keeps the marker
 // visible on the first few frames after load while textures upload.
 void DrawProceduralRing(ImDrawList* dl, const ImVec2& center, float size,
-                        const cursor::CursorSettings& s)
+                        const cursor::CursorSettings& s, bool draw_outline)
 {
     const float radius = cursor::pulse_ring_radius(size);
     if (radius <= 0.0f) { return; }
     constexpr int   kSegments   = 48;
     constexpr float kCoreStroke = 3.0f;
-    if (s.outline)
+    if (draw_outline)
     {
         dl->AddCircle(center, radius, LayerTint(s.outline_colour, s.opacity_pct),
                       kSegments, kCoreStroke + 2.0f);
@@ -184,29 +205,40 @@ void DrawMarker(ImDrawList* dl, const ImVec2& center, const cursor::CursorSettin
     const ImVec2 p_min(rect.min_x, rect.min_y);
     const ImVec2 p_max(rect.max_x, rect.max_y);
 
-    // Fill centre (AC6): a procedural translucent disc under the shape. The v1.0
-    // design has no fill art, so the interior is drawn, not textured.
-    if (s.fill)
+    const int idx = static_cast<int>(s.preset);
+    const PresetCaps& caps = kPresetCaps[idx];
+    const bool draw_outline = s.outline && caps.has_outline;
+
+    // Fill centre (AC6): a procedural translucent shape under the marker, sized
+    // and shaped per preset so it sits inside the art (disc for rings, square for
+    // the reticle). Presets that ARE a fill (Soft Halo) carry FillShape::None.
+    if (s.fill && caps.fill_shape != FillShape::None)
     {
-        const float fill_r = size * 0.42f; // sits inside the ring/shape
-        dl->AddCircleFilled(center, fill_r,
-                            FillTint(s.fill_colour, s.fill_opacity_pct, s.opacity_pct),
-                            48);
+        const ImU32 fc = FillTint(s.fill_colour, s.fill_opacity_pct, s.opacity_pct);
+        const float e = size * caps.fill_extent;
+        if (caps.fill_shape == FillShape::Square)
+        {
+            dl->AddRectFilled(ImVec2(center.x - e, center.y - e),
+                              ImVec2(center.x + e, center.y + e), fc, size * 0.05f);
+        }
+        else
+        {
+            dl->AddCircleFilled(center, e, fc, 48);
+        }
     }
 
-    const int idx = static_cast<int>(s.preset);
     Texture_t* colour_tex  = ResolveTex(idx, /*colour_layer=*/true);
-    Texture_t* outline_tex = s.outline ? ResolveTex(idx, /*colour_layer=*/false) : nullptr;
+    Texture_t* outline_tex = draw_outline ? ResolveTex(idx, /*colour_layer=*/false) : nullptr;
 
     // Until the colour layer is ready, keep the marker visible procedurally.
     if (!colour_tex || !colour_tex->Resource)
     {
-        DrawProceduralRing(dl, center, size, s);
+        DrawProceduralRing(dl, center, size, s, draw_outline);
         return;
     }
 
     // Outline UNDER colour (the outline reads as a dark halo behind the core).
-    if (s.outline && outline_tex && outline_tex->Resource)
+    if (draw_outline && outline_tex && outline_tex->Resource)
     {
         dl->AddImage(static_cast<ImTextureID>(outline_tex->Resource), p_min, p_max,
                      ImVec2(0, 0), ImVec2(1, 1),
@@ -290,20 +322,30 @@ void RenderPanel()
         s.opacity_pct = cursor::clamp_int(opacity, cursor::kOpacityMin, cursor::kOpacityMax);
     }
 
+    // Outline and Fill apply only to presets that support them — Soft Halo is a
+    // single-colour glow, so its outline/fill controls are hidden (the stored
+    // values are kept for when the player switches back to a ring preset).
+    const PresetCaps& caps = kPresetCaps[static_cast<int>(s.preset)];
+
     // Outline (AC5): toggle + colour.
-    bool outline = s.outline;
-    if (ImGui::Checkbox("Outline", &outline)) { s.outline = outline; }
-    if (s.outline)
+    if (caps.has_outline)
     {
-        ImGui::SameLine();
-        float oc[3]; ToFloat3(s.outline_colour, oc);
-        if (ImGui::ColorEdit3("Outline colour", oc, ImGuiColorEditFlags_NoInputs))
+        bool outline = s.outline;
+        if (ImGui::Checkbox("Outline", &outline)) { s.outline = outline; }
+        if (s.outline)
         {
-            s.outline_colour = FromFloat3(oc);
+            ImGui::SameLine();
+            float oc[3]; ToFloat3(s.outline_colour, oc);
+            if (ImGui::ColorEdit3("Outline colour", oc, ImGuiColorEditFlags_NoInputs))
+            {
+                s.outline_colour = FromFloat3(oc);
+            }
         }
     }
 
     // Fill centre (AC6): toggle + opacity + colour.
+    if (caps.fill_shape != FillShape::None)
+    {
     bool fill = s.fill;
     if (ImGui::Checkbox("Fill centre", &fill)) { s.fill = fill; }
     if (s.fill)
@@ -321,6 +363,7 @@ void RenderPanel()
             s.fill_colour = FromFloat3(fc);
         }
     }
+    } // caps.fill_shape != None
 
     ImGui::Separator();
     if (ImGui::Button("Reset to defaults")) { s = cursor::CursorSettings::defaults(); }
