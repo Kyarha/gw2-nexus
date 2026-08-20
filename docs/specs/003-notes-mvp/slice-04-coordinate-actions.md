@@ -49,6 +49,15 @@ subset + clipboard fallback.
    (`WndProc_SendToGameOnly` char-faking) or memory reading; the only game-driving
    call permitted is `GameBinds_PressAsync` for the tier-1 map-open (a first-class
    Nexus API, single user-initiated key), per ADR-0005.
+6. **Clearing a stamped coordinate is guarded (UX).** Because clearing a coordinate
+   is a destructive coordinate-action, the note UI's **Clear** control must not wipe a
+   stamped coordinate in a single unconfirmed click — it requires the same two-step
+   confirm (or undo) treatment as note deletion. Folded from an owner in-game review
+   (inbox, 2026-08-20: an accidental one-click Clear lost a stamped GPS).
+   **Implementation is deferred to the v1.2 integration pass** and targets the
+   **003-07 note-card** Clear button (the shipping surface the owner actually uses),
+   not this branch's pre-card flat button — see the Divergence note below. This AC
+   records the decision and owner; the code lands when 003-04 and 003-07 integrate.
 
 **DoD:**
 - [ ] Final ACs (post-spike) pass; each action verified in-game and recorded with
@@ -62,10 +71,25 @@ subset + clipboard fallback.
       linearity, symmetry, project/unproject round-trip, zero-scale guard), the
       `is_map_open` UiState gate, and the share text pinned to `format_coordinate`;
       23 cases / 100 assertions pass; red→green→mutation demonstrated.)_
-- [ ] Reviewed by the `reviewer` subagent (compliance + craft recorded and clear).
+- [x] Reviewed by the `reviewer` subagent (compliance + craft recorded and clear).
+      _(`reviews/slice-04-compliance.md` + `reviews/slice-04-craft.md`.)_
 - [ ] Deviation log + reconciliation sweep produced; any gap between the intended
       and the delivered (feasible) behavior recorded plainly.
+- [ ] **AC6 (Clear-confirm) implemented at v1.2 integration** against the 003-07
+      note-card Clear button (two-step confirm / undo), then verified in-game.
+      Carried as an integration item — do not attest DONE until it lands.
 - [ ] Reconciliation review passed.
+
+### Divergence note (entry.cpp: flat list vs note cards)
+
+This branch's `entry.cpp` renders a **flat** note list (SmallButtons for Clear /
+Copy / Show-on-map / Delete, all one-click, no confirm). Slice **003-07** reworked
+that same loop into **note cards** with a two-step delete-confirm; that card UI —
+not this flat list — is the surface that ships and the one the owner's Clear-confirm
+report (AC6) is about. The two branches therefore **conflict on `entry.cpp`** and
+must be integrated. Per owner decision (2026-08-20): AC6 is **recorded here** but
+**implemented once, at integration, on the card UI**, so no throwaway confirm code
+is written against this branch's soon-replaced flat Clear button.
 
 ## Assumptions
 
