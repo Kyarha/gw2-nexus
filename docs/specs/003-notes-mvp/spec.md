@@ -125,6 +125,14 @@ spikes it. The spike's outcome **branches** what 003-04 builds — it is not
   API exposes them, never bundled); the default design is always shippable, so the
   slice is **not** art-blocked. Split out of 003-01 because it is cross-cutting.
   Not on the coordinate spine; depends only on 003-01.
+- **003-08 (Interface + Data — scope addition, post-MVP-shaped)** — categories +
+  a two-pane (left-nav / right-content) layout so a growing note set stays
+  organised. Grows the note record with an optional **category** and adds category
+  CRUD/assignment, never gating access (principle #2). **Not** on the original
+  coordinate spine and **not** traced to a vision use case (surfaced from in-game
+  review, 2026-08-19); a deliberate addition to spec 003, splittable along the
+  Interface axis (data+CRUD → two-pane) if large. Depends only on 003-01;
+  coordinates with 003-05 on the schema-version integer.
 
 **Anti-horizontal-phasing check:** 003-01/02/04/05 each end with something the
 player sees and does in-game (a persisted note, a note stamped with a place, a
@@ -164,4 +172,10 @@ disguised "build it all later" phase.
 6. [003-06 — native-look theme](slice-06-native-look-theme.md) — shared theme
    layer (our own basic themed design; 9-slice frame mechanism) re-skinning the
    Notes panel. *(design principle #1 / #6; off the coordinate spine)*
-   *(design principle #1 / #6; off the coordinate spine)*
+7. [003-08 — categories + two-pane](slice-08-categories.md) — organise notes into
+   categories in a two-pane (left-nav + right-content) layout. *(Interface + Data;
+   scope addition from in-game review, no existing UC — trace open)*
+
+*(003-07 — note-cards + core interactions is tracked on the
+`claude/notes-native-theme-003-06` branch and folds into this spec's slice list at
+the v1.2 integration pass; it is not yet on `main`.)*

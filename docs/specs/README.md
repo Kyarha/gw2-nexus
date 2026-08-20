@@ -23,6 +23,7 @@
 | [003-notes-mvp](003-notes-mvp/spec.md) | 003-04 — coordinate actions | DRAFT |  |
 | [003-notes-mvp](003-notes-mvp/spec.md) | 003-05 — context-aware notes (optional MVP convenience) | DRAFT |  |
 | [003-notes-mvp](003-notes-mvp/spec.md) | 003-06 — native-look theme layer | IN_PROGRESS (claude/notes-native-theme-0…) |  |
+| [003-notes-mvp](003-notes-mvp/spec.md) | 003-08 — categories + two-pane layout | DRAFT |  |
 | [004-cursor-highlight](004-cursor-highlight/spec.md) | 004-01 — highlight-draw | **DONE** |  |
 | [004-cursor-highlight](004-cursor-highlight/spec.md) | 004-02 — appearance | **DONE** |  |
 | [004-cursor-highlight](004-cursor-highlight/spec.md) | 004-03 — combat & movement visibility | DRAFT |  |
