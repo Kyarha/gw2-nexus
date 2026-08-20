@@ -14,6 +14,7 @@
 
 #include <algorithm>
 #include <cfloat>
+#include <cstdint>
 #include <filesystem>
 #include <optional>
 #include <string>
@@ -190,15 +191,16 @@ void RenderPanel()
     // by the filter and the per-note tag affordances below.
     const notes::Context ctx = ReadCurrentContext();
 
-    // AC2 filter: optionally narrow the list to the current character's notes.
-    // Opt-in convenience — off by default, and toggling off restores every note,
-    // so a tag never hides a note you can't get back (AC4). Only offered when the
-    // character is known; otherwise the toggle is force-cleared so a stale filter
-    // can't silently hide notes after the link drops.
+    // AC2 filter: optionally hide notes that belong to OTHER characters, so a
+    // player on many alts sees the right ones. Untagged ("general") notes are kept
+    // — they belong to no character in particular, so they stay visible on every
+    // one (design principle #2: the filter narrows, it never hides your general
+    // notes). Opt-in and off by default; toggling off restores everything (AC4).
+    // Only offered when the character is known; otherwise force-cleared so a stale
+    // filter can't silently hide notes after the link drops.
     if (ctx.character)
     {
-        const std::string label = "Only " + *ctx.character + "'s notes";
-        ImGui::Checkbox(label.c_str(), &g_FilterThisCharacter);
+        ImGui::Checkbox("Hide other characters' notes", &g_FilterThisCharacter);
     }
     else
     {
@@ -217,11 +219,12 @@ void RenderPanel()
                       ImVec2(0.0f, ImGui::GetContentRegionAvail().y), false);
     for (const auto& note : g_Store->notes())
     {
-        // AC2 filter (opt-in): when "only this character" is on and the character
-        // is known, skip notes not tagged to them. Never a permanent gate — the
-        // filter is user-toggled and off shows everything (AC4).
-        if (g_FilterThisCharacter && ctx.character &&
-            !notes::tagged_to_character(note, *ctx.character))
+        // AC2 filter (opt-in): skip only notes tagged to a DIFFERENT character.
+        // Untagged/general notes are kept (they belong to no one character), and
+        // the filter is user-toggled — off shows everything, so it never gates
+        // access (AC4).
+        if (g_FilterThisCharacter && ctx.character && note.character &&
+            *note.character != *ctx.character)
         {
             continue;
         }

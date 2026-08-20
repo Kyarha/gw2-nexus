@@ -1,5 +1,5 @@
 ---
-status: IN_PROGRESS
+status: REVIEWED
 dependencies: [003-01]
 last_verified:
 frame_review: true
@@ -71,9 +71,15 @@ principle #2). Delivers UC-9 (map auto-appear) and UC-10 (per-character notes).
       _(Done off-game: `notes/core/context.{h,cpp}` predicates + `note_store`
       tags/migration; `notes/tests/test_note_store.cpp` — 23 cases / 143 assertions
       pass; the `note_surfaces_in` untagged-neutrality mutation shown to fail.)_
-- [ ] Reviewed by the `reviewer` subagent (compliance + craft recorded and clear).
-- [ ] Deviation log + reconciliation sweep produced.
-- [ ] Reconciliation review passed.
+- [x] Reviewed by the `reviewer` subagent (compliance + craft recorded and clear).
+      _(Independent `jig:reviewer` pass, 2026-08-20: verdict **pass** — every AC
+      met, tests bite, AC4 never-gate structurally sound, glue honestly CI-scoped.
+      Two non-blocking notes actioned: filter now keeps general notes; direct
+      `<cstdint>` include. Third note (auto-surface highlight/sort) is the logged
+      AC3 deviation.)_
+- [x] Deviation log produced (below); reconciliation sweep pending in-game verify.
+- [ ] Reconciliation review passed. _(Held with the v1.2 integration + in-game
+      verification; do not attest DONE before then.)_
 
 ## Assumptions
 
@@ -116,6 +122,12 @@ on arrival — visible convenience on top of the always-reachable panel.
 - **Auto-surface = open the panel** (AC3's "the panel opens" option), not
   highlight/sort-to-top. Highlighting the matched notes is a possible enhancement,
   deferred.
+- **Character filter keeps general notes** (AC2, post-review). The "Hide other
+  characters' notes" toggle hides only notes tagged to a *different* character;
+  untagged/general notes stay visible on every character (they belong to no one
+  character). Chosen over a strict "only this character" filter — hiding general
+  notes cuts against design principle #2 (never hide access unexpectedly), and the
+  reviewer flagged the strict form as surprising. Fully recoverable (toggle off).
 - **No login-baseline pop (AC5, design principle #3).** The first live map read
   only establishes the baseline; auto-surface fires only on a subsequent
   transition — so logging in onto a tagged map does **not** force the panel open.
