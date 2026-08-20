@@ -121,6 +121,13 @@ void RenderPanel()
 
     std::string to_delete; // defer deletion until after the loop
 
+    // Scrollable note area only, so the scrollbar sits beside the notes rather
+    // than running the full window height across the fixed title bar and its
+    // close button. Transparent child bg lets the panel surface show through
+    // (no card-within-a-card).
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
+    ImGui::BeginChild("##notelist",
+                      ImVec2(0.0f, ImGui::GetContentRegionAvail().y), false);
     for (const auto& note : g_Store->notes())
     {
         ImGui::PushID(note.id.c_str());
@@ -173,6 +180,8 @@ void RenderPanel()
         ImGui::Separator();
         ImGui::PopID();
     }
+    ImGui::EndChild();
+    ImGui::PopStyleColor();
 
     if (!to_delete.empty())
     {
@@ -207,8 +216,11 @@ void AddonRender()
 
     // NoTitleBar: the shared theme draws our own native title bar inside the body
     // (see RenderPanel). The window is still movable by dragging the body.
-    const ImGuiWindowFlags flags =
-        ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse;
+    // NoScrollbar: the note list scrolls inside its own child (see RenderPanel),
+    // so the outer window never draws a scrollbar over the fixed title bar.
+    const ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar |
+                                   ImGuiWindowFlags_NoCollapse |
+                                   ImGuiWindowFlags_NoScrollbar;
     if (ImGui::Begin(kWindowName, &g_PanelOpen, flags))
     {
         const ImVec2 w_min = ImGui::GetWindowPos();
