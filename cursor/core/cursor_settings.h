@@ -46,7 +46,9 @@ inline bool operator!=(const Rgb& a, const Rgb& b) { return !(a == b); }
 // clamping (cursor_store) keeps an out-of-range persisted value in bounds rather
 // than trusting the file.
 inline constexpr int kSizeMin        = 40;   // px
-inline constexpr int kSizeMax        = 180;  // px
+inline constexpr int kSizeMax        = 100;  // px (mockup allowed 180; capped to
+                                             // 100 — 180 is oversized for a
+                                             // cursor aid, per in-game feedback)
 inline constexpr int kOpacityMin     = 20;   // %
 inline constexpr int kOpacityMax     = 100;  // %
 inline constexpr int kFillOpacityMin = 0;    // %

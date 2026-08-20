@@ -218,7 +218,7 @@ TEST_CASE("every appearance field round-trips through disk (004-02 AC8)")
     cursor::CursorSettings edited = cursor::CursorSettings::defaults();
     edited.preset           = cursor::Preset::SoftHalo;
     edited.colour           = cursor::Rgb{0x12, 0x34, 0x56};
-    edited.size_px          = 120;
+    edited.size_px          = 88;  // within [kSizeMin, kSizeMax]
     edited.opacity_pct      = 55;
     edited.outline          = false;
     edited.outline_colour   = cursor::Rgb{0xab, 0xcd, 0xef};
@@ -328,7 +328,7 @@ TEST_CASE("reset to defaults restores the v1.0 appearance (004-02 AC7)")
 
     cursor::CursorSettings messed = store.settings();
     messed.preset = cursor::Preset::BeaconCrosshair;
-    messed.size_px = 180;
+    messed.size_px = 100;
     messed.outline = false;
     messed.fill = true;
     CHECK(store.set(messed));

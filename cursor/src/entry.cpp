@@ -24,6 +24,8 @@
 #include <Windows.h>
 
 #include <cstdint>
+#include <cstdio>
+#include <cstring>
 #include <filesystem>
 
 #include "imgui.h"
@@ -39,9 +41,12 @@ namespace {
 constexpr const char* kKeybindId     = "KB_CURSOR_TOGGLE";
 constexpr const char* kQuickAccessId = "QA_CURSOR";
 constexpr const char* kWindowName    = "Cursor Finder";
-// Default hotkey: plain "C" (from the v1.0 design). The player can rebind it in
-// the Nexus keybind UI.
-constexpr const char* kDefaultBind   = "C";
+// No default hotkey. The v1.0 design suggested "C", but that collides with
+// common in-game binds; register the keybind UNBOUND so it appears in the Nexus
+// keybind UI for the player to assign their own key. ("(null)" is Nexus's
+// no-default sentinel.) The QuickAccess button remains the always-available way
+// to open the panel.
+constexpr const char* kDefaultBind   = "(null)";
 
 // Nexus built-in toolbar icons (a bundled badge is out of scope for 004-02, which
 // covers the marker art, not the toolbar icon).
@@ -79,13 +84,45 @@ constexpr PresetTex kPresetTex[] = {
       {"TEX_CURSOR_SOFT_HALO_COLOUR",         IDR_CURSOR_SOFT_HALO_COLOUR} },
 };
 
-// Fetch a texture, creating it from the embedded resource on first use. Returns
-// nullptr until Nexus has finished uploading it (or if the API is absent) — the
-// caller falls back to the procedural ring for that frame.
-Texture_t* GetTex(const LayerTex& t)
+// Cached preset textures, filled by the async receive callback (the documented
+// load path) and, as a fallback, lazily by GetOrCreateFromResource. Indexed by
+// (int)Preset.
+struct PresetTexCache {
+    Texture_t* outline = nullptr;
+    Texture_t* colour  = nullptr;
+};
+PresetTexCache g_Tex[5];
+
+// Receive callback for Textures_LoadFromResource: match the identifier back to
+// its preset/layer slot and cache the pointer. Nexus keeps ownership; we only
+// hold the pointer and read ->Resource at draw time.
+void OnTextureReceived(const char* aIdentifier, Texture_t* aTexture)
 {
-    if (!g_API || !g_API->Textures_GetOrCreateFromResource) { return nullptr; }
-    return g_API->Textures_GetOrCreateFromResource(t.id, t.res, g_Module);
+    if (!aIdentifier) { return; }
+    for (int i = 0; i < 5; ++i)
+    {
+        if (std::strcmp(aIdentifier, kPresetTex[i].outline.id) == 0) { g_Tex[i].outline = aTexture; return; }
+        if (std::strcmp(aIdentifier, kPresetTex[i].colour.id)  == 0) { g_Tex[i].colour  = aTexture; return; }
+    }
+}
+
+// Resolve a preset layer's texture: prefer the cache (populated by the async
+// loader), else try GetOrCreateFromResource and cache it. Returns nullptr (or a
+// texture whose Resource is not ready yet) — the caller falls back to the
+// procedural ring for that frame.
+Texture_t* ResolveTex(int idx, bool colour_layer)
+{
+    Texture_t*& slot = colour_layer ? g_Tex[idx].colour : g_Tex[idx].outline;
+    if (slot && slot->Resource) { return slot; }
+    const LayerTex& lt = colour_layer ? kPresetTex[idx].colour : kPresetTex[idx].outline;
+    if (g_API && g_API->Textures_GetOrCreateFromResource)
+    {
+        if (Texture_t* t = g_API->Textures_GetOrCreateFromResource(lt.id, lt.res, g_Module))
+        {
+            slot = t;
+        }
+    }
+    return slot;
 }
 
 // --- colour helpers ----------------------------------------------------------
@@ -171,8 +208,8 @@ void DrawMarker(ImDrawList* dl, const ImVec2& center, const cursor::CursorSettin
     }
 
     const int idx = static_cast<int>(s.preset);
-    Texture_t* colour_tex  = GetTex(kPresetTex[idx].colour);
-    Texture_t* outline_tex = s.outline ? GetTex(kPresetTex[idx].outline) : nullptr;
+    Texture_t* colour_tex  = ResolveTex(idx, /*colour_layer=*/true);
+    Texture_t* outline_tex = s.outline ? ResolveTex(idx, /*colour_layer=*/false) : nullptr;
 
     // Until the colour layer is ready, keep the marker visible procedurally.
     if (!colour_tex || !colour_tex->Resource)
@@ -315,9 +352,33 @@ void RenderPanel()
     ImGui::Dummy(ImVec2(box, box)); // reserve the layout space the preview occupies
 }
 
+// One-shot texture-readiness diagnostic: after a few seconds, report how many
+// preset layers actually have a live Resource. If this logs 0 ready, the load
+// path itself is the problem (not our draw code).
+void MaybeLogTexReadiness()
+{
+    static int  frames = 0;
+    static bool logged = false;
+    if (logged || !g_API || !g_API->Log) { return; }
+    if (++frames < 180) { return; } // ~3s at 60fps
+    int colour_ready = 0, outline_ready = 0;
+    for (int i = 0; i < 5; ++i)
+    {
+        if (g_Tex[i].colour  && g_Tex[i].colour->Resource)  { ++colour_ready; }
+        if (g_Tex[i].outline && g_Tex[i].outline->Resource) { ++outline_ready; }
+    }
+    char msg[160];
+    std::snprintf(msg, sizeof(msg),
+        "cursor: preset textures ready colour=%d/5 outline=%d/5", colour_ready, outline_ready);
+    g_API->Log(LOGL_INFO, "gw2-nexus", msg);
+    logged = true;
+}
+
 // Registered as an RT_Render callback; Nexus calls it every frame.
 void AddonRender()
 {
+    MaybeLogTexReadiness();
+
     if (g_Store)
     {
         const cursor::CursorSettings& s = g_Store->settings();
@@ -375,6 +436,31 @@ void AddonLoad(AddonAPI_t* aApi)
         aApi->Paths_GetAddonDirectory ? aApi->Paths_GetAddonDirectory("cursor")
                                       : std::filesystem::path("cursor");
     g_Store = new cursor::CursorStore(dir / "cursor.json");
+
+    // Kick the async load of every preset layer texture from the embedded
+    // resources; OnTextureReceived caches each Texture_t* when it is ready. This
+    // is the documented load path (GetOrCreateFromResource is kept as a
+    // per-frame fallback in ResolveTex).
+    if (aApi->Textures_LoadFromResource)
+    {
+        for (int i = 0; i < 5; ++i)
+        {
+            aApi->Textures_LoadFromResource(kPresetTex[i].outline.id,
+                                            kPresetTex[i].outline.res, g_Module, OnTextureReceived);
+            aApi->Textures_LoadFromResource(kPresetTex[i].colour.id,
+                                            kPresetTex[i].colour.res, g_Module, OnTextureReceived);
+        }
+    }
+    if (aApi->Log)
+    {
+        char msg[192];
+        std::snprintf(msg, sizeof(msg),
+            "cursor: texture APIs load=%p getorcreate=%p module=%p",
+            reinterpret_cast<void*>(aApi->Textures_LoadFromResource),
+            reinterpret_cast<void*>(aApi->Textures_GetOrCreateFromResource),
+            reinterpret_cast<void*>(g_Module));
+        aApi->Log(LOGL_INFO, "gw2-nexus", msg);
+    }
 
     aApi->GUI_Register(RT_Render, AddonRender);
 
