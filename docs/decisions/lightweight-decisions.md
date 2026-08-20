@@ -81,9 +81,9 @@ fields), so the documented shape and the helper output agree.
 
 ### 2026-08-20 — Cursor marker latency: velocity prediction (to be toggle-gated)
 
-**Decision:** The live cursor marker leads the pointer along a smoothed per-frame velocity (~1 frame look-ahead) to hide the frame-rate-bound latency of an in-process overlay. Sampled from the OS-instantaneous cursor (GetCursorPos->ScreenToClient), not ImGui's event-driven io.MousePos. Shipping unconditionally first to evaluate feel; once proven it moves behind an off-by-default 'Reduce lag' toggle so native-Windows users are unaffected.
+**Decision:** TRIED AND REVERTED. Velocity look-ahead (leading the marker ~1 frame along smoothed cursor motion) hid the lag but felt too nervous/jittery in play, a bad trade for a find-my-cursor aid. Reverted to a plain anchor on the OS-instantaneous cursor (GetCursorPos->ScreenToClient, kept — it beats ImGui's event-driven io.MousePos). Residual ~1-frame latency is accepted as inherent to an in-frame overlay and is amplified under CrossOver's low fps; expected to be negligible on a fast native-Windows client.
 
-**Context:** In-game under CrossOver the marker trailed the hardware arrow once a scene loaded and fps dropped; the OS composites the cursor after the game presents, so a per-frame overlay is inherently ~1 frame behind, worse at low fps. Rejected: moving to a later Nexus render stage (RT_PostRender/PreRender fire outside the ImGui frame, so ImGui draws there are invalid/dropped) and accept-as-is. Prediction self-scales (large lead at low fps, ~0 at high fps) so it is a near-no-op on a fast native client.
+**Context:** The OS composites the hardware cursor AFTER the game presents its frame, so anything drawn INTO the game frame (Nexus/ImGui overlay) is inherently ~1 frame behind, worse at low fps. Rejected fixes: later Nexus render stage (fires outside the ImGui frame); velocity prediction (reverted, too nervous). The only way to truly stick to the cursor at zero latency is to draw on the OS cursor plane itself (a custom hardware cursor / HCURSOR), which is a much larger, invasive change (cursor hooking, size caps, loses live animation) — noted as a possible future direction, not adopted.
 
 **Scope:** cursor addon — cursor/src/entry.cpp live-marker draw anchor (PredictedPointer)
 

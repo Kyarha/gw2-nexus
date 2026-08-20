@@ -125,38 +125,6 @@ ImVec2 CurrentPointer()
     return ImGui::GetMousePos();
 }
 
-// Per-frame pointer state for latency prediction.
-ImVec2 g_PrevPointer{};
-ImVec2 g_PointerVel{}; // smoothed per-frame motion (px/frame)
-bool   g_HasPrev = false;
-
-// Predict the pointer roughly one present-frame ahead to hide the overlay's
-// frame-rate-bound latency: the OS composites the hardware cursor AFTER the game
-// presents, so a per-frame overlay trails it — visibly worse at low fps (e.g.
-// under CrossOver once a scene is loaded). We lead the marker along the smoothed
-// per-frame motion, which self-scales (a big lead at low fps, ~0 at high fps, so
-// it does nothing on a fast native-Windows client). Light EMA smoothing on the
-// velocity keeps the lead from jittering on cursor micro-motion.
-//
-// EXPERIMENT (004-02): shipped unconditionally to evaluate feel; once proven it
-// moves behind an off-by-default "Reduce lag" toggle so native-Windows users
-// (who have no visible latency) are unaffected. See lightweight-decisions.
-ImVec2 PredictedPointer()
-{
-    const ImVec2 cur = CurrentPointer();
-    if (!g_HasPrev) { g_PrevPointer = cur; g_HasPrev = true; }
-
-    const ImVec2 delta(cur.x - g_PrevPointer.x, cur.y - g_PrevPointer.y);
-    g_PrevPointer = cur;
-
-    constexpr float kSmooth = 0.5f; // EMA weight on the newest frame's motion
-    g_PointerVel.x += (delta.x - g_PointerVel.x) * kSmooth;
-    g_PointerVel.y += (delta.y - g_PointerVel.y) * kSmooth;
-
-    constexpr float kLead = 1.0f; // frames of look-ahead (~one present frame)
-    return ImVec2(cur.x + g_PointerVel.x * kLead, cur.y + g_PointerVel.y * kLead);
-}
-
 // --- marker drawing ----------------------------------------------------------
 
 // Fallback procedural ring (004-01 look) when a preset texture is not ready yet:
@@ -356,9 +324,8 @@ void AddonRender()
         if (s.enabled)
         {
             // Anchor on the OS cursor hotspot — the true click point UC-14 needs
-            // (AC2), led slightly ahead to hide per-frame overlay latency. The
-            // core geometry keeps the marker centered on it.
-            const ImVec2 mouse = PredictedPointer();
+            // (AC2). The core geometry keeps the marker centered on it.
+            const ImVec2 mouse = CurrentPointer();
             // Foreground draw list = above the addon's own windows; background =
             // below them ("Show above Nexus windows").
             ImDrawList* dl = s.draw_above_windows ? ImGui::GetForegroundDrawList()
