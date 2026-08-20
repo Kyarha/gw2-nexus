@@ -88,3 +88,11 @@ fields), so the documented shape and the helper output agree.
 **Scope:** cursor addon — cursor/src/entry.cpp live-marker draw anchor (PredictedPointer)
 
 **Commit:** PR #8 (branch claude/cursor-appearance-004-02)
+
+### 2026-08-20 — Cursor marker is intentionally static (no pulse/animation)
+
+**Decision:** The cursor marker does not animate — no pulse, spin, or throb. It is drawn as a still shape. (The 'Pulse Ring' preset name denotes the ring style, not motion.)
+
+**Context:** In GW2 combat everything is already moving — particles, skill tells, effects. An animated marker blends INTO that motion; a completely static marker is what stands out, because stillness is the one cue the battlefield does not produce. This is the core visibility rationale: find-the-cursor works by contrast-through-stillness, not by attracting the eye with motion. Do NOT add animation to 'improve visibility' — it does the opposite here. Also removes the main downside of the future custom-hardware-cursor path (which cannot animate).
+
+**Scope:** cursor addon marker rendering (all presets); informs 004-03 visibility + the hardware-cursor refinement-todo

@@ -106,8 +106,10 @@ re-assert our cursor when GW2 sets its own. No memory patching / code detours.
 **Real tradeoffs (not hackiness):**
 - Replacing the arrow likely overrides GW2's *contextual* cursors (interact/
   attack/target) unless we selectively pass those through — the hard part.
-- The highlight becomes part of the cursor bitmap: no live pulse animation,
-  size capped by OS cursor limits (typically <=256px).
+- The highlight becomes part of the cursor bitmap, so it cannot animate — but
+  the marker is intentionally static anyway (stillness is the signal against
+  GW2's constant motion; see lightweight-decisions), so this is NOT a downside
+  for us. Size is capped by OS cursor limits (typically <=256px).
 - CrossOver behaviour for custom cursors is untested.
 
 **Blocking unknown (resolve first):** does GW2 use the OS hardware cursor
