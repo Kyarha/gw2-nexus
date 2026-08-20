@@ -96,3 +96,13 @@ fields), so the documented shape and the helper output agree.
 **Context:** In GW2 combat everything is already moving — particles, skill tells, effects. An animated marker blends INTO that motion; a completely static marker is what stands out, because stillness is the one cue the battlefield does not produce. This is the core visibility rationale: find-the-cursor works by contrast-through-stillness, not by attracting the eye with motion. Do NOT add animation to 'improve visibility' — it does the opposite here. Also removes the main downside of the future custom-hardware-cursor path (which cannot animate).
 
 **Scope:** cursor addon marker rendering (all presets); informs 004-03 visibility + the hardware-cursor refinement-todo
+
+### 2026-08-20 — Bundle addon textures via GetOrCreateFromMemory, not .rc/RCDATA
+
+**Decision:** Embed addon PNG art as C byte arrays compiled into the DLL and load with Nexus Textures_GetOrCreateFromMemory. Do NOT use a Windows .rc/RCDATA resource + Textures_GetOrCreateFromResource: it built fine and the PNGs were verifiably embedded (IHDR chunks present), but at runtime FindResource-by-numeric-ID failed under CrossOver ('Resource not found ResID: 103'). FromMemory has no FindResource/module-handle/language-stamp to go wrong. A small generator (cursor/assets/gen_texture_data.py) turns presets/*.png into preset_textures_data.h; regen is rasterize.mjs -> gen_texture_data.py.
+
+**Context:** 004-02 cursor preset art. Two builds were burned on the resource path (module handle, resource language, numeric-vs-string IDs — none conclusively root-caused) before switching to memory loading, which worked first try. Rejected alternative: .rc/RCDATA (fragile under Wine/CrossOver, and the failure mode is silent — build passes, textures just never appear). Applies to any future Nexus addon bundling art (e.g. themed icons for notes/cursor).
+
+**Scope:** cursor addon art pipeline; general Nexus addon texture bundling
+
+**Commit:** PR #8 / commit 5067dcc

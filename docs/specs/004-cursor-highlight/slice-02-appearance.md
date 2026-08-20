@@ -104,9 +104,38 @@ five presets, recolors it, resizes/fades it, toggles/recolours its outline, and
 optionally fills its centre — all live and persisted — a self-contained, visible
 customization.
 
-### Deviation log (after reconciliation)
+### Deviation log (running — finalized at reconciliation)
 
-_TODO at reconciliation._
+Deviations from the spec/mockup surfaced during in-game iteration:
+
+1. **Outline is player-controlled** (AC5) — divergence from the mockup's fixed
+   dark outline. Recorded in the spec amendment (AC2/AC7, spec A2).
+2. **Keybind unbound by default** — the v1.0 design showed "HOTKEY C", but C
+   collides with common in-game binds. The keybind registers UNBOUND (Nexus
+   "(null)") so the player assigns their own key; the QuickAccess button is the
+   always-on entry point.
+3. **Size max 100** — the mockup allowed 40–180; capped to 100 (180 is oversized
+   for a cursor aid, per in-game feedback). Default unchanged (96).
+4. **Preset art loaded from memory, not Windows resources** — the `.rc`/RCDATA +
+   `Textures_GetOrCreateFromResource` path failed at runtime (`Resource not found
+   ResID`), so the PNGs are compiled in as byte arrays and loaded via
+   `Textures_GetOrCreateFromMemory`. See lightweight-decisions.
+5. **Per-preset outline/fill capability** — presets are geometrically different,
+   so outline/fill are not uniform. **Soft Halo** is a single-colour glow: no
+   outline, no fill (both read as a confusing double-halo / double-opacity), and
+   those controls are hidden for it. **Fill** is per-preset shape+size (a square
+   inside the Corner Reticle; correctly-sized discs elsewhere) rather than one
+   oversized disc. Refines AC5/AC6.
+6. **Fill is procedural, not textured** — the v1.0 design has no fill geometry, so
+   the fill centre is drawn (disc/square), not a bundled art layer (AC6).
+7. **Preset switch adopts the preset's signature hue** (overwrites Colour),
+   mirroring the mockup. Per-preset colour memory (returning to a preset keeps a
+   custom colour) is a requested enhancement, pending.
+8. **Marker anchored on the OS-instantaneous cursor** (`GetCursorPos`), not
+   ImGui's event-driven `io.MousePos`, which trailed under CrossOver. Velocity
+   prediction was tried and reverted (see lightweight-decisions); the residual
+   frame-latency of an in-frame overlay is accepted (CrossOver-amplified;
+   negligible on a fast native client — see the hardware-cursor refinement-todo).
 
 ### Reconciliation sweep
 
