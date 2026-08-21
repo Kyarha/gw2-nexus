@@ -474,8 +474,12 @@ void AddonRender()
     const shared::theme::ThemeScope scope =
         shared::theme::PushPanelStyle(pal, met); // before Begin: window vars apply
 
+    // NoScrollbar on the outer window: the body scrolls inside its own child
+    // (below), so the outer scrollbar never draws over the fixed native title bar
+    // / close X. Same fix as the notes panel.
     const ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar |
-                                   ImGuiWindowFlags_NoCollapse;
+                                   ImGuiWindowFlags_NoCollapse |
+                                   ImGuiWindowFlags_NoScrollbar;
     if (ImGui::Begin(kWindowName, &g_PanelOpen, flags))
     {
         const ImVec2 w_min  = ImGui::GetWindowPos();
@@ -492,7 +496,17 @@ void AddonRender()
             g_PanelOpen = false;
         }
 
-        RenderPanel();
+        // Body scrolls in its own child so any scrollbar stays below the title
+        // bar (never over the close X). Transparent child bg so the panel fill
+        // shows through (PushPanelStyle's ChildBg is the lighter card colour,
+        // which would read as a raised card over the whole body).
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4(0, 0, 0, 0));
+        if (ImGui::BeginChild("##cursor-body", ImVec2(0.0f, 0.0f), false))
+        {
+            RenderPanel();
+        }
+        ImGui::EndChild();
+        ImGui::PopStyleColor();
     }
     ImGui::End();
 
