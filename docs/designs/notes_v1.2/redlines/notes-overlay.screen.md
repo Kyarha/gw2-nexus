@@ -21,8 +21,9 @@ base: base.md
 
 ## 3. Elements
 
-Size is `w × h` au, or `hug` / `fill`. Fills/borders named by base token
-(`@ NN%` = alpha). Position is relative to the named neighbour.
+Size is `w × h` in au (e.g. the rail is 48 au wide; a card `hug`s its content),
+or `hug` / `fill`. Fills/borders named by base token (`@ NN%` = alpha). Position
+is relative to the named neighbour.
 
 | id | size | fix/scale | position & notes |
 |---|---|---|---|
@@ -121,15 +122,15 @@ Each row names a base *Type scale* style; a per-element change is written
 | note-body | note prose | body | body-text |
 | coord-chip | "Place — x, y" | coord-chip | coord-bright |
 | form-label | "NEW NOTE" | button (size=13, letter-spacing=0.5) | gold |
-| field-label | "CATEGORY" / "SCOPE" | field-label (uppercase) | muted @ 50% |
+| field-label | "CATEGORY" / "SCOPE" | field-label | muted @ 50% |
 | category-chip | category label | button (size=12) | muted @ 66% (active → gold-btn) |
 | scope-btn | "Global"/"Character"/"Zone" | button (size=12.5) | muted @ 62% (active → gold-btn) |
 | save-btn | "Save note" | button | gold-btn |
 | cancel-btn | "Cancel" | button (weight=400) | muted-2 @ 80% |
-| form-hint | "Wrap coords like [Place — 1234, 5678]" | caption (style=italic) | muted @ 45% |
+| form-hint | "Wrap coords like [Place — 1234, 5678]" | caption | muted @ 45% |
 | empty-title | "No notes yet" | heading (family=Cinzel, size=16, weight=500) | parchment-dim |
 | empty-body | empty explanation | body-sm | muted @ 60% |
-| loading-placeholder | "Loading notes…" | body-sm (style=italic) | muted @ 50% |
+| loading-placeholder | "Loading notes…" | body-sm | muted @ 50% |
 | coord-menu-kicker | "COORDINATE" | field-label (size=10.5, letter-spacing=0.63) | muted @ 55% |
 | coord-menu-label | coord label | body-sm (size=13.5) | coord-menu-title |
 | coord-menu-item | "Show on map" / "Share to chat" | body-sm (size=13.5) | muted-3 (hover coord-menu-title) |

@@ -31,6 +31,81 @@ inline ImVec4 to_vec4(const Color& c)
     return ImVec4(c.r / 255.0f, c.g / 255.0f, c.b / 255.0f, c.a / 255.0f);
 }
 
+// A copy of `c` with its alpha replaced (0.0-1.0). Lets a draw site apply the
+// redline's "@ NN%" border alphas to a base token without a second palette entry.
+inline Color with_alpha(const Color& c, double opacity)
+{
+    return Color{c.r, c.g, c.b, alpha8(opacity)};
+}
+
+// --- card / note primitives (slice 003-07) -----------------------------------
+
+// Vertical two-stop gradient fill (top -> bottom), the mechanism behind the v1.2
+// note-card and editor-form fills. `AddRectFilledMultiColor` takes the four
+// corner colors clockwise from upper-left; a vertical gradient repeats top on the
+// upper edge and bottom on the lower edge. No rounding param exists on the
+// multicolor fill, so callers draw the rounded border over it (radius is small).
+inline void GradientRectFilled(ImDrawList* dl, const ImVec2& a, const ImVec2& b,
+                               const Color& top, const Color& bottom)
+{
+    const ImU32 t = to_u32(top);
+    const ImU32 bo = to_u32(bottom);
+    dl->AddRectFilledMultiColor(a, b, t, t, bo, bo);
+}
+
+// The note-card tack pin (v1.2 note-tack): a filled disc, gold-btn over pin-dark,
+// centred on the card's top edge and nudged slightly above it.
+inline void DrawTack(ImDrawList* dl, float center_x, float top_y,
+                     const Palette& p = gw2_palette())
+{
+    const float r = 5.5f; // Ø 11 au
+    const ImVec2 c(center_x, top_y);
+    dl->AddCircleFilled(c, r, to_u32(p.tack_dark), 12);
+    dl->AddCircleFilled(ImVec2(c.x - 1.2f, c.y - 1.2f), r * 0.62f,
+                        to_u32(p.tack_light), 12);
+}
+
+// Which primitive glyph an IconButton draws.
+enum class GlyphIcon { Pencil, Trash };
+
+// A small square icon-button (v1.2 note-actions): bordered box + a primitive
+// glyph, brightening to gold on hover. Returns true on click. `id` must be
+// unique in the current ImGui id scope. Uses the same InvisibleButton + drawlist
+// idiom as TitleBar's close control.
+inline bool IconButton(const char* id, float size, GlyphIcon glyph,
+                       const Palette& p = gw2_palette())
+{
+    ImDrawList*  dl  = ImGui::GetWindowDrawList();
+    const ImVec2 pos = ImGui::GetCursorScreenPos();
+    const bool   clicked = ImGui::InvisibleButton(id, ImVec2(size, size));
+    const bool   hover   = ImGui::IsItemHovered();
+
+    const ImVec2 a = pos;
+    const ImVec2 b(pos.x + size, pos.y + size);
+    dl->AddRect(a, b, to_u32(hover ? p.button_border : with_alpha(p.border, 0.28)),
+                3.0f);
+    const ImU32 col = to_u32(hover ? p.text_gold : p.text_muted_2);
+    const float cx  = pos.x + size * 0.5f;
+    const float cy  = pos.y + size * 0.5f;
+
+    if (glyph == GlyphIcon::Pencil)
+    {
+        // Diagonal pencil: body stroke + nib tip + eraser tail.
+        dl->AddLine(ImVec2(cx - 4.0f, cy + 4.0f), ImVec2(cx + 4.0f, cy - 4.0f), col, 1.8f);
+        dl->AddLine(ImVec2(cx + 4.0f, cy - 4.0f), ImVec2(cx + 6.0f, cy - 2.0f), col, 1.8f);
+        dl->AddLine(ImVec2(cx - 4.0f, cy + 4.0f), ImVec2(cx - 6.0f, cy + 6.0f), col, 1.8f);
+    }
+    else // Trash
+    {
+        dl->AddRect(ImVec2(cx - 4.0f, cy - 3.0f), ImVec2(cx + 4.0f, cy + 6.0f), col, 1.0f);
+        dl->AddLine(ImVec2(cx - 6.0f, cy - 3.0f), ImVec2(cx + 6.0f, cy - 3.0f), col, 1.8f);
+        dl->AddLine(ImVec2(cx - 2.0f, cy - 6.0f), ImVec2(cx + 2.0f, cy - 6.0f), col, 1.8f);
+        dl->AddLine(ImVec2(cx - 1.5f, cy), ImVec2(cx - 1.5f, cy + 4.0f), col, 1.0f);
+        dl->AddLine(ImVec2(cx + 1.5f, cy), ImVec2(cx + 1.5f, cy + 4.0f), col, 1.0f);
+    }
+    return clicked;
+}
+
 // --- style push/pop ----------------------------------------------------------
 
 // How many colors / vars PushPanelStyle pushes; PopPanelStyle pops exactly this.

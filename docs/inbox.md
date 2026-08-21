@@ -9,6 +9,7 @@
 > This is NOT a task list. Items here are parked thoughts, not committed work.
 
 <!-- Add items below. Format: - [date] description -->
+- ~~[2026-08-20] (from 003-07 in-game review) **Clearing a stamped coordinate needs a confirmation.** The note card's **Clear** button (next to `Map … — (x, y)`) wipes a stamped GPS in one click with no confirmation — the owner deleted one by mistake.~~ → **promoted to 003-04 as AC6** (2026-08-20, on branch `claude/notes-coordinate-actions-003-04`); implementation deferred to the v1.2 integration pass on the 003-07 note-card Clear button (the surface that survives the flat-list→cards merge).
 
 - [2026-08-12] SDK dependency decision (promote to ADR when writing the build-skeleton spec): the addon SDK submodule targets `RaidcoreGG/Nexus-API` (MIT), **not** `RaidcoreGG/Nexus` (the host loader, which is all-rights-reserved / proprietary). Addons build only against the MIT public API; the loader is never redistributed. Project licensed MIT, consistent with Nexus-API, the official cpp template, and the ImGui builds.
 - [2026-08-13] (from 003-01 reviews) Surface failed write-through: `NoteStore::add/edit/remove` discard `persist()`'s bool, so a failed disk write (permission/disk-full) silently diverges memory from disk — AC3 durability degrades with no signal. Consider propagating the failure so `entry.cpp` can log via `aApi->Log`. Low odds; not blocking MVP.

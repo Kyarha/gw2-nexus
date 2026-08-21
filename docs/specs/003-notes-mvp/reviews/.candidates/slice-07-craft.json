@@ -1,0 +1,289 @@
+{
+  "spec": "003-notes-mvp",
+  "slice": "003-07 \u2014 note cards + core interactions",
+  "pass": "craft",
+  "category": "pr_review",
+  "run_id": "97e9d11d18ae4357b2a71ac13ea5ef92",
+  "created_at": "2026-08-20T21:31:23Z",
+  "candidates": [
+    {
+      "name": "servo:agent-loop",
+      "description": "Run a headless agent loop against a scaffolded target. Subprocesses\n`claude -p --agent <runner|judge>` against the target N iterations under\nhard guardrails (iteration cap, cumulative cost ceiling, context-fill\nrefusal, oracle-score plateau detection, SIGINT/SIGTERM cleanup), uses\n`gate.py` as the truth-source after each iteration, and checkpoints state\nto `<target>/.servo/runs/<run-id>/state.json` so an interrupted or capped\nrun can be resumed.\nFire this skill when the user wants to:\n- \"run an agent loop\" / \"iterate on this codebase\" / \"headless loop\"\n- \"let claude iterate against my target\" / \"fire-and-forget claude on this\"\n- \"resume the loop\" / \"continue the prior loop\" / \"pick up where it left off\"\n- \"loop with cost ceiling X\" / \"loop until the oracle passes\"\n- \"use /goal to keep going\" / \"goal-driven loop\" / \"--driver goal\" \u2014 the\nADR-0008 mode that delegates continuation to Claude Code's `/goal` while\nservo keeps the oracle + guardrail layer (caps on the outer call, final\n`gate.py` verdict). `--driver auto` (default) probes the host and picks\ngoal-or-loop; `--driver loop` forces the portable hand-rolled path.\n- \"run it detached / in the background / unattended\" / \"--background\" \u2014\nlaunch the goal loop detached so it survives terminal close (slice 003-08).\n- \"set up a scheduled run\" / \"make this Routine-ready\" /\n\"--emit-routine-prompt\" \u2014 vendor gate.py + print the /goal prompt to paste\ninto a scheduled Routine (web/desktop; gate.py is the in-Routine authority).\nDo NOT fire on:\n- \"score this code\" / \"run the oracle\" / \"what's the oracle score?\" \u2014\nthat's `/servo:quality-gate` (the loop's truth-source, not a sibling).\n- \"set up servo\" / \"scaffold the oracle\" / \"install servo\" \u2014 that's\n`/servo:scaffold-init`; the loop refuses if the target hasn't been\nscaffolded.\n- \"race variants\" / \"run N parallel attempts\" \u2014 future\n`/servo:variant-race` (spec 005); the loop is single-track.\n- \"review my PR\" / \"code review\" \u2014 out of scope. The loop's `judge`\nagent is an internal contract between iterations, not a PR reviewer.\nWhen in doubt, ask which servo skill the user means rather than invent\na trigger match.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/servo/skills/agent-loop/SKILL.md",
+      "tier": "high-confidence"
+    },
+    {
+      "name": "servo:autonomy-readiness",
+      "description": "Decide whether a goal's SCOPE and INITIAL PROMPT are precise and bounded\nenough to hand to an unattended, long-horizon agent loop \u2014 *before* any budget\nis burned. Emits the ADR-0029 **readiness verdict**: a closed three-state gate\n(`ready` / `needs_tightening` / `unsafe_for_autonomy`), fail-closed, written to\n`<target>/.servo/readiness/<goal-id>.json`. Human-owned \u2014 the artifact starts\n`approval_status: proposed` and is never auto-approved; a human reviews the\nscorecard and flips it to `approved`. Readiness sits **upstream of**\n`/servo:edd-suitability`: suitability asks \"can this spec be evaluated?\", this\nasks the prior question \"is the premise safe to run unattended at all?\".\nFire this skill when the user wants to:\n- \"is this goal/brief ready to run unattended?\" / \"is this safe to hand to a\nlong-horizon loop?\"\n- \"why won't the background run / recurring Routine start?\" / \"what's blocking\nautonomy on this goal?\"\n- \"review this prompt before I let it run for a day\" / \"is this brief precise\nand bounded enough?\"\n- \"approve this goal for an unattended run\" / \"check whether <goal> is\napproved for autonomy\"\n- \"is my run identity separated from my merge identity?\" / \"will owner-approval\ngates actually hold?\"\nDo NOT fire on:\n- \"is this spec suitable for EDD?\" / \"what evidence is this spec missing?\" \u2014\nthat's `/servo:edd-suitability`. Readiness sits UPSTREAM of it and hands off\nto it; it does not judge EDD-shape or the acceptance criteria.\n- \"scaffold the oracle\" / \"install servo\" / \"detect signals\" \u2014 that's\n`/servo:scaffold-init`. Readiness *reads* the oracle/signals it produced; it\ndoes not synthesize them.\n- \"run the loop\" / \"iterate on this\" / \"let claude fix it\" \u2014 that's\n`/servo:agent-loop`. Readiness is the *precondition* an unattended launch\nsurface consults, not the run.\n- \"score this build\" / \"what's the oracle score?\" \u2014 that's\n`/servo:quality-gate`. Readiness judges the *premise*, not a build.\nWhen in doubt, ask which servo skill the user means rather than invent a\ntrigger match.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/servo/skills/autonomy-readiness/SKILL.md",
+      "tier": "high-confidence"
+    },
+    {
+      "name": "servo:quality-gate",
+      "description": "Run the scaffolded `oracle.sh` against a target project and surface a\nclosed-contract result (0 = pass / 1 = below threshold / 2 = env error).\nAlso exposes an `audit` subcommand that prints the servo install manifest\nwithout invoking the oracle.\nFire this skill when the user wants to:\n- \"score this code\" / \"score this project\" / \"run quality gate\"\n- \"run the oracle\" / \"what's the oracle score?\"\n- \"check the oracle\" / \"did the oracle pass?\"\n- \"show me the gate result\" / \"is the gate passing?\"\n- \"what does this servo install include?\" (\u2192 audit subcommand)\nDo NOT fire on:\n- \"set up servo\" / \"scaffold oracle\" / \"install servo\" \u2014 those are\n`/servo:scaffold-init`'s territory (a sibling skill, not this one).\n- \"fix the failing test\" / \"make tests pass\" / \"debug this test\" \u2014\nout of scope. The gate reports; it does not modify code or tests.\n- \"run my tests\" / \"lint this\" \u2014 call the underlying tool directly;\nthe gate is the composite scorer, not a single-tool runner.\n- \"review my code\" / \"code review\" \u2014 that's a separate workflow.\nWhen in doubt, ask which servo skill the user means rather than invent\na trigger match.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/servo/skills/quality-gate/SKILL.md",
+      "tier": "high-confidence"
+    },
+    {
+      "name": "access",
+      "description": "Manage Discord channel access \u2014 approve pairings, edit allowlists, set DM/group policy. Use when the user asks to pair, approve someone, check who's allowed, or change policy for the Discord channel.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/claude-plugins-official/external_plugins/discord/skills/access/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "agent-development",
+      "description": "This skill should be used when the user asks to \"create an agent\", \"add an agent\", \"write a subagent\", \"agent frontmatter\", \"when to use description\", \"agent examples\", \"agent tools\", \"agent colors\", \"autonomous agent\", or needs guidance on agent structure, system prompts, triggering conditions, or agent development best practices for Claude Code plugins.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/claude-plugins-official/plugins/plugin-dev/skills/agent-development/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "build-mcp-app",
+      "description": "This skill should be used when the user wants to build an \"MCP app\", add \"interactive UI\" or \"widgets\" to an MCP server, \"render components in chat\", build \"MCP UI resources\", make a tool that shows a \"form\", \"picker\", \"dashboard\" or \"confirmation dialog\" inline in the conversation, or mentions \"apps SDK\" in the context of MCP. Use AFTER the build-mcp-server skill has settled the deployment model, or when the user already knows they want UI widgets.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/claude-plugins-official/plugins/mcp-server-dev/skills/build-mcp-app/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "build-mcp-server",
+      "description": "This skill should be used when the user asks to \"build an MCP server\", \"create an MCP\", \"make an MCP integration\", \"wrap an API for Claude\", \"expose tools to Claude\", \"make an MCP app\", or discusses building something with the Model Context Protocol. It is the entry point for MCP server development \u2014 it interrogates the user about their use case, determines the right deployment model (remote HTTP, MCPB, local stdio), picks a tool-design pattern, and hands off to specialized skills.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/claude-plugins-official/plugins/mcp-server-dev/skills/build-mcp-server/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "build-mcpb",
+      "description": "This skill should be used when the user wants to \"package an MCP server\", \"bundle an MCP\", \"make an MCPB\", \"ship a local MCP server\", \"distribute a local MCP\", discusses \".mcpb files\", mentions bundling a Node or Python runtime with their MCP server, or needs an MCP server that interacts with the local filesystem, desktop apps, or OS and must be installable without the user having Node/Python set up.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/claude-plugins-official/plugins/mcp-server-dev/skills/build-mcpb/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "build-to-redline",
+      "description": "Build a UI to match a design mockup accurately the first time, then close the remaining gap by MEASUREMENT rather than eyeballing. Use whenever the user invokes /vellum:build-to-redline, or asks to \"build this screen to match the design\", \"implement this mockup accurately\", \"redline this design\", \"set up a design-fidelity loop\", \"get the UI to match pixel-for-pixel\", or is starting UI work against a mockup and wants it measured, not guessed. Stack-agnostic: drives a redline \u2192 build \u2192 screenshot-vs-reference \u2192 score \u2192 close-the-gap loop where BUILD and CAPTURE are the project's job and everything else is stack-blind. Composes servo:design-eval for scoring and jig:spec-workflow for tracking \u2014 it never writes the UI itself and never forks the scorer. For reviewing an already-built screen against its design, use vellum:design-review instead.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/vellum/plugin/skills/build-to-redline/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "claude-automation-recommender",
+      "description": "Analyze a codebase and recommend Claude Code automations (hooks, subagents, skills, plugins, MCP servers). Use when user asks for automation recommendations, wants to optimize their Claude Code setup, mentions improving Claude Code workflows, asks how to first set up Claude Code for a project, or wants to know what Claude Code features they should use.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/claude-plugins-official/plugins/claude-code-setup/skills/claude-automation-recommender/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "claude-md-improver",
+      "description": "Audit and improve CLAUDE.md files in repositories. Use when user asks to check, audit, update, improve, or fix CLAUDE.md files. Scans for all CLAUDE.md files, evaluates quality against templates, outputs quality report, then makes targeted updates. Also use when the user mentions \"CLAUDE.md maintenance\" or \"project memory optimization\".",
+      "path": "/Users/mr/.claude/plugins/marketplaces/claude-plugins-official/plugins/claude-md-management/skills/claude-md-improver/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "command-development",
+      "description": "This skill should be used when the user asks to \"create a slash command\", \"add a command\", \"write a custom command\", \"define command arguments\", \"use command frontmatter\", \"organize commands\", \"create command with file references\", \"interactive command\", \"use AskUserQuestion in command\", or needs guidance on slash command structure, YAML frontmatter fields, dynamic arguments, bash execution in commands, user interaction patterns, or command development best practices for Claude Code.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/claude-plugins-official/plugins/plugin-dev/skills/command-development/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "configure",
+      "description": "Set up the Discord channel \u2014 save the bot token and review access policy. Use when the user pastes a Discord bot token, asks to configure Discord, asks \"how do I set this up\" or \"who can reach me,\" or wants to check channel status.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/claude-plugins-official/external_plugins/discord/skills/configure/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "content-fidelity",
+      "description": "Author a frozen text content-fidelity eval component for a project \u2014 the non-visual sibling of servo's design-eval. Use when generated text (a reply, a doc, a templated message) must match an intended rubric or spec (\"does this text match the intended tone/content/style?\") and that fidelity should drive or gate the loop. Gathers the generated text under test (file read or generator command), judges fidelity with a pinned text-capable model (n-sampled, lower-bound), freezes the definition, and installs a `score_content_fidelity` component into the project's `oracle.sh`. Do not use for deterministic checks (use scaffold-init / spec-oracle), for visual/UI fidelity (use design-eval), or for the per-iteration judge agent.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/servo/skills/content-fidelity/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "cutline",
+      "description": "Read a release plan plus JIG specs/status when present, then recommend include, defer, split, and risk-first boundaries without mutating JIG lifecycle state.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/shaper/skills/cutline/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "design-brief",
+      "description": "Write a SHORT design brief for Claude design (CD) and record it per version under docs/design/<target>/ that the user copies into CD. Use when the user wants to brief Claude design, start designing an app/view/feature, or get a prompt to paste into CD. The brief gives CD only what to build and the content it must contain \u2014 the user's real data or invented sample data, whichever the user asks for (the skill asks; it never assumes real) \u2014 and hands every visual decision \u2014 mood, palette, type, layout, imagery \u2014 to CD, the designer, by default. It never dictates colours, tone adjectives, or style rules unless the user explicitly gives visual direction, in which case it carries exactly one free-text Direction block CD interprets. It stays as lean as possible. Existing visual assets are transferred to CD by the user, never embedded in the brief, and a product CD already designed has its identity referenced, not restated. Every brief is a new design version, grouped by target (a whole app, a view, or a feature): CD builds the version's files into a design/<target>/<target>-vX.Y/ folder (the target slug is repeated on every version folder and md file) and stamps a version header in each file. A big change bumps the major (v1.0 \u2192 v2.0); a small iteration bumps the minor (v1.0 \u2192 v1.1); what it started from is recorded in the brief, not the number. Pairs with the design-tweaks skill for iterating in place.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/vellum/plugin/skills/design-brief/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "design-eval",
+      "description": "Author a frozen UI design-fidelity eval component for a project \u2014 the non-deterministic sibling of servo's deterministic component templates. Use when a project must be built to match a design mockup (\"does the UI match the design?\") and that fidelity should drive or gate the loop. Captures app vs reference screenshots, judges fidelity with a pinned vision model (n-sampled, lower-bound), freezes the definition, and installs a `score_design_fidelity` component into the project's `oracle.sh`. Do not use for deterministic checks (use scaffold-init / spec-oracle) or for the per-iteration judge agent.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/servo/skills/design-eval/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "design-review",
+      "description": "Verify that shipped UI actually matches its accepted design, by driving the running app at every named breakpoint, screenshotting, and comparing the WHOLE screen against the cited mockup \u2014 then recording the verdict as evidence. Use whenever the user invokes /vellum:design-review, or asks \"does the UI match the design\", \"check this screen against the mockup\", \"run a design review\", \"verify the layout at each breakpoint\", \"did we build what the design said\", or is about to mark a UI slice REVIEWED/DONE and it cites a design (design_v* or docs/design/*). Also fires when a design-fidelity advisory hook has just warned that a UI-bearing slice has no cleared attestation. Catches the defect class unit tests structurally cannot see: jsdom and renderToStaticMarkup have no layout engine, so a stretched single column passes every \"responsive\" test. Do NOT use for subjective design critique (use design-panel), for authoring an external fidelity eval (use servo:design-eval), or for non-visual acceptance criteria.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/vellum/plugin/skills/design-review/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "design-tweaks",
+      "description": "Turn the user's feedback on a Claude design (CD) result into short, copy-paste change requests, and log them in the target's version md under docs/design/<target>/ to track design decisions over time. Use when CD has produced a design and the user wants tweaks, changes, or comments to paste back into CD. Phrases every change as what to make it become (never what's wrong or what to avoid), targets the current version folder (design/<target>/<target>-vX.Y) so CD edits that version's files in place, and appends each round to the same docs/design/<target>/<target>-vX.Y.md that the design-brief skill created.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/vellum/plugin/skills/design-tweaks/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "eval-authoring",
+      "description": "Author a frozen text-judged eval from a spec-006 `residual_judgment` AC or a free-form goal. Guides triage, rubric shaping, reference-set collection, frozen n/\u03b4/threshold/judge parameters, ADR-0024 freeze/install, and advisory judge audit. Use to author an eval, turn a goal into acceptance criteria, shape a rubric or reference set, freeze/install an eval, or audit judge trust. Do NOT use to run evals (`quality-gate`/`agent-loop`), classify deterministic checks (`spec-oracle`), decide EDD suitability (`edd-suitability`), or build design/content fidelity evals (use the `design-eval` / `content-fidelity` presets). This is the generic surface for other text-judged criteria.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/servo/skills/eval-authoring/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "example-command",
+      "description": "An example user-invoked skill that demonstrates frontmatter options and the skills/<name>/SKILL.md layout",
+      "path": "/Users/mr/.claude/plugins/marketplaces/claude-plugins-official/plugins/example-plugin/skills/example-command/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "example-skill",
+      "description": "This skill should be used when the user asks to \"demonstrate skills\", \"show skill format\", \"create a skill template\", or discusses skill development patterns. Provides a reference template for creating Claude Code plugin skills.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/claude-plugins-official/plugins/example-plugin/skills/example-skill/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "frontend-design",
+      "description": "Create distinctive, production-grade frontend interfaces with high design quality. Use this skill when the user asks to build web components, pages, or applications. Generates creative, polished code that avoids generic AI aesthetics.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/claude-plugins-official/plugins/frontend-design/skills/frontend-design/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "hook-development",
+      "description": "This skill should be used when the user asks to \"create a hook\", \"add a PreToolUse/PostToolUse/Stop hook\", \"validate tool use\", \"implement prompt-based hooks\", \"use ${CLAUDE_PLUGIN_ROOT}\", \"set up event-driven automation\", \"block dangerous commands\", or mentions hook events (PreToolUse, PostToolUse, Stop, SubagentStop, SessionStart, SessionEnd, UserPromptSubmit, PreCompact, Notification). Provides comprehensive guidance for creating and implementing Claude Code plugin hooks with focus on advanced prompt-based hooks API.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/claude-plugins-official/plugins/plugin-dev/skills/hook-development/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "math-olympiad",
+      "description": "",
+      "path": "/Users/mr/.claude/plugins/marketplaces/claude-plugins-official/plugins/math-olympiad/skills/math-olympiad/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "mcp-integration",
+      "description": "This skill should be used when the user asks to \"add MCP server\", \"integrate MCP\", \"configure MCP in plugin\", \"use .mcp.json\", \"set up Model Context Protocol\", \"connect external service\", mentions \"${CLAUDE_PLUGIN_ROOT} with MCP\", or discusses MCP server types (SSE, stdio, HTTP, WebSocket). Provides comprehensive guidance for integrating Model Context Protocol servers into Claude Code plugins for external tool and service integration.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/claude-plugins-official/plugins/plugin-dev/skills/mcp-integration/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "open",
+      "description": "Start the project dashboard and give the user the URL. Use when the user wants to see their project dashboard, check where their jig projects stand, get an overview of spec progress / open bugs / workstreams across projects, or says things like \"open my dashboard\" or \"where are my projects at\".",
+      "path": "/Users/mr/.claude/plugins/marketplaces/dashboard/skills/open/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "playground",
+      "description": "Creates interactive HTML playgrounds \u2014 self-contained single-file explorers that let users configure something visually through controls, see a live preview, and copy out a prompt. Use when the user asks to make a playground, explorer, or interactive tool for a topic.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/claude-plugins-official/plugins/playground/skills/playground/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "plugin-settings",
+      "description": "This skill should be used when the user asks about \"plugin settings\", \"store plugin configuration\", \"user-configurable plugin\", \".local.md files\", \"plugin state files\", \"read YAML frontmatter\", \"per-project plugin settings\", or wants to make plugin behavior configurable. Documents the .claude/plugin-name.local.md pattern for storing plugin-specific configuration with YAML frontmatter and markdown content.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/claude-plugins-official/plugins/plugin-dev/skills/plugin-settings/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "plugin-structure",
+      "description": "This skill should be used when the user asks to \"create a plugin\", \"scaffold a plugin\", \"understand plugin structure\", \"organize plugin components\", \"set up plugin.json\", \"use ${CLAUDE_PLUGIN_ROOT}\", \"add commands/agents/skills/hooks\", \"configure auto-discovery\", or needs guidance on plugin directory layout, manifest configuration, component organization, file naming conventions, or Claude Code plugin architecture best practices.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/claude-plugins-official/plugins/plugin-dev/skills/plugin-structure/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "redline-request",
+      "description": "Output a ready-to-paste Claude Design prompt that makes CD write an EXISTING design out as redline markdown \u2014 exact sizes, positions, fonts, colours, and ring geometry, in abstract units, as a compact cascade (one base sheet, one file per screen, states as deltas). Handles designs with many views (a whole app's screens sharing one base) as well as a single screen. Use whenever the user invokes /vellum:redline-request, or asks for \"the prompt to get the redline from Claude Design\", \"ask CD to write out this design's measurements\", \"generate the redline request\", or \"give me the CD prompt to redline this screen/design\". This skill ONLY emits the prompt \u2014 it does not fill the redline, measure the design, build, or score. The user pastes the emitted prompt into Claude Design (with the design open) and CD produces the cascade files (base + screens + states). For the full build-and-measure loop, use vellum:build-to-redline; to review an already-built screen, use vellum:design-review.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/vellum/plugin/skills/redline-request/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "release-check",
+      "description": "Read a release plan plus JIG specs/status and optional servo release signals when present, then give an advisory ship / cut-scope / stop-and-re-shape / extend-with-rationale recommendation without mutating JIG or servo state.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/shaper/skills/release-check/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "release-slate",
+      "description": "Read docs/releases/*.md release plans and write or refresh the compact docs/releases/README.md slate without creating a backlog or duplicating JIG lifecycle state.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/shaper/skills/release-slate/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "scope-audit",
+      "description": "Read a release plan plus JIG specs/status when present, then flag appetite leakage, creep, unresolved rabbit holes, no-go conflicts, overreach, and orphan specs without mutating JIG lifecycle state.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/shaper/skills/scope-audit/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "servo:edd-suitability",
+      "description": "Decide whether an engineering spec is suitable for Evaluation-Driven\nDevelopment before any unattended loop runs against it. Emits the ADR-0015\n**suitability verdict** \u2014 a closed three-state gate (`suitable` /\n`needs_evidence` / `unsuitable`), fail-closed, with an actionable\n`missing_evidence` checklist \u2014 written to\n`<target>/.servo/suitability/<spec-id>.json`. A gate, not a score: the loop\nnever optimizes toward a meaningless green oracle on work that cannot be\nevaluated.\nFire this skill when the user wants to:\n- \"is this spec/work suitable for EDD?\" / \"should this go through servo?\"\n- \"what evidence is this spec missing?\" / \"why isn't this ready to compile?\"\n- \"why won't Compile proceed on this spec?\" / \"explain the suitability verdict\"\n- \"re-check suitability after I added tests\" / \"is <spec> EDD-shaped yet?\"\nDo NOT fire on:\n- \"scaffold the oracle\" / \"install servo\" / \"detect signals\" \u2014 that's\n`/servo:scaffold-init` (001). Suitability *reads* the signals it detects;\nit does not synthesize the oracle.\n- \"classify the acceptance criteria\" / \"map ACs to check families\" \u2014 that's\n`/servo:spec-oracle` (006). Suitability *consults* that classification; it\ndoes not reclassify.\n- \"run the loop\" / \"iterate on this\" / \"let claude fix it\" \u2014 that's\n`/servo:agent-loop` (003). Suitability is the *precondition*, not the run.\n- \"score this code\" / \"what's the oracle score?\" \u2014 that's\n`/servo:quality-gate` (002). Suitability judges the *spec*, not a build.\nWhen in doubt, ask which servo skill the user means rather than invent a\ntrigger match.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/servo/skills/edd-suitability/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "servo:execution-planner",
+      "description": "Assemble the [ADR-0016](../../docs/decisions/adr-0016-execution-plan-artifact.md)\n**execution plan** \u2014 the durable Compile\u2192Run handoff artifact \u2014 from the\nCompile inputs already produced upstream (the suitability verdict, the\noracle, the spec-oracle overlay) and write it to\n`<target>/.servo/plans/<spec-id>/plan.json`. This is the **last step of\nServo Compile**: it decides nothing new, classifies nothing, and adds no\ngate \u2014 it only references what Compile already produced.\nFire this skill when the user wants to:\n- \"compile the execution plan for this spec\"\n- \"produce the Compile\u2192Run handoff\"\n- \"emit `plan.json` for this spec\"\n- \"assemble the ADR-0016 plan for <spec>\" / \"wire up the Compile\u2192Run artifact\"\nDo NOT fire on:\n- \"is this spec suitable for EDD?\" / \"what evidence is missing?\" \u2014 that's\n`/servo:edd-suitability` (015). This skill *consumes* the suitability\nverdict as a hard precondition; it does not decide it.\n- \"classify the acceptance criteria\" / \"build the spec-oracle overlay\" \u2014\nthat's `/servo:spec-oracle` (006). This skill *references* the overlay\nby id + AC counts; it does not classify ACs or build the overlay.\n- \"run the loop\" / \"consume this plan\" / \"iterate on this spec\" \u2014 that's\n`/servo:agent-loop` (003). This skill produces the plan `loop.py --plan`\nreads at Run time; it never runs the loop itself.\n- \"score this build\" / \"what's the oracle score?\" \u2014 that's\n`/servo:quality-gate` (002). This skill has no opinion on a build's\nscore; it only assembles the plan that will later govern a run.\nWhen in doubt, ask which servo skill the user means rather than invent a\ntrigger match.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/servo/skills/execution-planner/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "servo:heartbeat",
+      "description": "Run heartbeat or set up a scheduled heartbeat for a servo-scaffolded target.\nThe heartbeat is servo's Routine-triggered front-end: discover project signals\ninto a triage inbox, read the heartbeat inbox, dispatch heartbeat findings, or\nrun heartbeat end to end under one whole-heartbeat cost ceiling. Fire this\nskill for requests mentioning a Routine, cron, GitHub Actions schedule, or a\nscheduled agent that should invoke servo on an interval.\nDo NOT fire on:\n- \"run the oracle\" / \"score this code\" / \"oracle score\" \u2014 that's\n`/servo:quality-gate`.\n- \"iterate on this\" / \"run an agent loop\" / \"fix this manually with the\nloop\" \u2014 that's `/servo:agent-loop`.\n- \"set up servo\" / \"scaffold the oracle\" / \"install servo in this\nproject\" \u2014 that's `/servo:scaffold-init`.\n- \"install the oracle hook\" / \"oracle hook status\" \u2014 that's\n`/servo:oracle-hook`.\n- \"spec oracle\" / \"turn this spec into checks\" \u2014 that's\n`/servo:spec-oracle`.\n- \"design eval\" / \"visual fidelity score\" \u2014 that's `/servo:design-eval`.\nWhen in doubt, ask which servo skill the user means rather than invent a\ntrigger match.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/servo/skills/heartbeat/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "servo:oracle-hook",
+      "description": "Install, uninstall, or report the status of servo's meta-judge `Stop` hook in\na target project. The installed hook scores every assistant turn against the\nscaffolded oracle (via `gate.py`) and blocks the stop with a structured retry\nhint when the oracle is below threshold \u2014 the interactive cousin of\n`/servo:agent-loop`. Installing it mutates `<target>/.claude/settings.json`,\nso it is a **Tier-2** surface: offered explicitly, never auto-installed.\nFire this skill when the user wants to:\n- \"install the oracle hook\" / \"add the Stop hook\" / \"set up the meta-judge\"\n- \"uninstall the oracle hook\" / \"remove the meta-judge\" / \"remove the Stop hook\"\n- \"is the oracle hook installed?\" / \"oracle hook status\" / \"check the hook\"\nDo NOT fire on:\n- \"run the oracle\" / \"score this code\" / \"what's the oracle score?\" \u2014 that's\n`/servo:quality-gate` (a one-shot score, not the hook installer).\n- \"iterate on this\" / \"run an agent loop\" / \"headless loop\" \u2014 that's\n`/servo:agent-loop` (the headless cousin; this hook is the interactive one).\n- \"set up servo\" / \"scaffold the oracle\" / \"install servo\" \u2014 that's\n`/servo:scaffold-init`; the hook refuses to install until the target is\nservo-scaffolded.\n- \"fix the failing test\" / \"review my code\" \u2014 out of scope. The hook installs\nand reports; it does not modify code or review it.\nWhen in doubt, ask which servo skill the user means rather than invent a\ntrigger match.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/servo/skills/oracle-hook/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "servo:scaffold-init",
+      "description": "Compile a target project's signals into an executable oracle \u2014 the first\nServo Compile step of servo's Evaluation-Driven Development engine. Probes\nthe target for signals (tests, lint, CI, language) and drops a tailored\n`oracle.sh`, `.servo/install.json` manifest, and `.servo/refinement-todo.md`\ndeferred-decisions list.\nFire this skill when the user wants to:\n- \"set up servo\" or \"set up servo on this project\"\n- \"scaffold oracle for this project\" or \"scaffold an oracle\"\n- \"install agent loop infrastructure\"\n- \"install servo here\"\n- \"bring this repo under servo's closed-loop control\"\nDo NOT fire on:\n- bare \"oracle\" or \"score this code\" \u2014 those refer to *running* an\nalready-scaffolded oracle.sh, which is a future runtime skill\n(`/servo:quality-gate`), not this scaffolder.\n- \"review my code\" / \"run my tests\" / \"lint this\" \u2014 out of scope.\n- \"set up jig\" / \"scaffold jig\" \u2014 that's jig's `/jig:scaffold-init`,\na sibling plugin, not this one.\nWhen in doubt, ask the user which servo skill they mean rather than\ninvent a trigger match.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/servo/skills/scaffold-init/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "servo:spec-oracle",
+      "description": "Compile a spec or slice into a reviewable, project-owned **evidence\noverlay**: map each acceptance criterion to a deterministic check family,\nwrite a `plan.md` + `checks.json` under the spec's own `oracle/<id>/`\ndirectory, compile the checks into an installable `oracle.sh` component, and\nfreeze it behind an explicit approval so an unattended loop can optimize\nagainst the spec's promises instead of a hand-waved single judge.\nFire this skill when the user wants to:\n- \"generate an oracle for this spec\" / \"spec oracle for <spec>\"\n- \"turn this spec/slice into checks\" / \"compile acceptance criteria into checks\"\n- \"evaluate / specify an oracle for a spec\" / \"what would servo judge for this spec?\"\n- \"plan the evidence for <spec>\" / \"install the spec overlay\" / \"approve the spec oracle\"\nDo NOT fire on:\n- \"run the oracle\" / \"score this code\" / \"what's the oracle score?\" \u2014\nthat's `/servo:quality-gate`. This skill *builds and installs* the\noverlay; quality-gate *runs* it.\n- \"iterate on this\" / \"run an agent loop\" / \"let claude fix it\" \u2014 that's\n`/servo:agent-loop`. This skill produces the target the loop optimizes\nagainst; it does not iterate.\n- \"set up servo\" / \"scaffold the oracle\" / \"install servo\" \u2014 that's\n`/servo:scaffold-init`, which produces the baseline `oracle.sh` this\noverlay composes onto.\nWhen in doubt, ask which servo skill the user means rather than invent a\ntrigger match.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/servo/skills/spec-oracle/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "session-report",
+      "description": "Generate an explorable HTML report of Claude Code session usage (tokens, cache, subagents, skills, expensive prompts) from ~/.claude/projects transcripts.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/claude-plugins-official/plugins/session-report/skills/session-report/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "shape-release",
+      "description": "Create or refine a repo-native release plan in docs/releases/<slug>.md from raw product intent, appetite, no-gos, risks, release-check criteria, and JIG handoff notes.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/shaper/skills/shape-release/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "skill-creator",
+      "description": "Create new skills, modify and improve existing skills, and measure skill performance. Use when users want to create a skill from scratch, edit, or optimize an existing skill, run evals to test a skill, benchmark skill performance with variance analysis, or optimize a skill's description for better triggering accuracy.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/claude-plugins-official/plugins/skill-creator/skills/skill-creator/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "skill-development",
+      "description": "This skill should be used when the user wants to \"create a skill\", \"add a skill to plugin\", \"write a new skill\", \"improve skill description\", \"organize skill content\", or needs guidance on skill structure, progressive disclosure, or skill development best practices for Claude Code plugins.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/claude-plugins-official/plugins/plugin-dev/skills/skill-development/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "snapshot",
+      "description": "Compose and record a narrative \"what's next\" snapshot for one project on the dashboard. Use when the user wants to capture where a project stands, update its dashboard headline, write a fresh \"what's next\" line, or says things like \"snapshot this project\", \"record where <project> is at\", or \"update the dashboard note for one of my projects\". Writes one entry to the dashboard-owned store outside every repo \u2014 never into the surveyed project.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/dashboard/skills/snapshot/SKILL.md",
+      "tier": "speculative"
+    },
+    {
+      "name": "writing-hookify-rules",
+      "description": "This skill should be used when the user asks to \"create a hookify rule\", \"write a hook rule\", \"configure hookify\", \"add a hookify rule\", or needs guidance on hookify rule syntax and patterns.",
+      "path": "/Users/mr/.claude/plugins/marketplaces/claude-plugins-official/plugins/hookify/skills/writing-rules/SKILL.md",
+      "tier": "speculative"
+    }
+  ],
+  "pick": "none",
+  "picked_at": "2026-08-20T21:31:39Z",
+  "applied_path": null
+}

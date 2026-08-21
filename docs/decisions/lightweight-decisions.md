@@ -106,3 +106,32 @@ fields), so the documented shape and the helper output agree.
 **Scope:** cursor addon art pipeline; general Nexus addon texture bundling
 
 **Commit:** PR #8 / commit 5067dcc
+### 2026-08-20 — Notes list renders newest-first
+
+**Decision:** The note list is displayed newest-first (most recently added at the top); the store's underlying order is unchanged.
+
+**Context:** 003-06 in-game review: New note appended off-screen at the bottom. Newest-first puts a new note in view without changing persistence/store semantics (slice 003-07 AC3).
+
+**Scope:** Notes panel — note list (notes/src/entry.cpp RenderPanel)
+
+**Commit:** 3f2065d
+
+### 2026-08-20 — Note card title = first non-empty line
+
+**Decision:** A note card's title is the first non-empty line of its free-form text (trimmed); the remaining lines are the body. Derived read-only; editing still edits the whole text.
+
+**Context:** Note model has no separate title field; the v1.2 card shows a title + body. Splitting off-game (notes::split_title_body) needs no data-model/schema change (slice 003-07 AC2).
+
+**Scope:** Notes panel — note card (notes/core/note.cpp split_title_body)
+
+**Commit:** 3a47bf6
+
+### 2026-08-20 — Note-card tack pin removed (deferred to redline)
+
+**Decision:** The v1.2 note-tack pin is not drawn on cards for now; the DrawTack theme primitive stays available for the redline pass.
+
+**Context:** In-game review: the tack, centred on the card's top edge, was clipped by the scroll region. Correct placement (on/inside the top border) is a fidelity detail for the single v1.2 redline pass, not this functional slice.
+
+**Scope:** Notes panel — note card (notes/src/entry.cpp; shared/theme/theme_imgui.h DrawTack)
+
+**Commit:** 3f2065d
