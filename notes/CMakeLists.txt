@@ -11,6 +11,7 @@ add_library(notes-core STATIC
   core/note.cpp
   core/note_store.cpp
   core/context.cpp
+  core/map_projection.cpp
 )
 target_include_directories(notes-core PUBLIC .)
 target_compile_features(notes-core PUBLIC cxx_std_17)
