@@ -21,7 +21,10 @@ public:
     // Bump when the on-disk shape changes; older files migrate forward.
     //   v1 (003-01): { id, text }
     //   v2 (003-02): + optional `coordinate` { map_id, x, y }
-    static constexpr int kSchemaVersion = 2;
+    //   v3 (003-05): + optional `character` (string) and `map` (uint) context tags
+    // Every bump so far is additive/compatible (a missing key -> nullopt), so no
+    // version-dispatch/migration branch is needed yet.
+    static constexpr int kSchemaVersion = 3;
 
     // Load the store from `path`. A missing file yields an empty store; a
     // corrupt/unparseable file recovers to an empty store without throwing.
@@ -52,6 +55,26 @@ public:
     // true if a note was updated (false if `id` is unknown). Clearing an already
     // coordinate-less note still returns true (the note exists and is cleared).
     bool clear_coordinate(const std::string& id);
+
+    // Tag the note with `id` with the character it belongs to (003-05 AC1, UC-10);
+    // write-through persists. Overwrites any existing character tag. No-op
+    // returning false if `id` is unknown.
+    bool set_character(const std::string& id, std::string character);
+
+    // Clear the note's character tag (003-05 AC1); write-through persists. Returns
+    // true if the note exists (false if `id` is unknown); clearing an untagged
+    // note still returns true.
+    bool clear_character(const std::string& id);
+
+    // Tag the note with `id` with the map it is about (003-05 AC1, UC-9);
+    // write-through persists. Overwrites any existing map tag. No-op returning
+    // false if `id` is unknown.
+    bool set_map_tag(const std::string& id, std::uint32_t map_id);
+
+    // Clear the note's map tag (003-05 AC1); write-through persists. Returns true
+    // if the note exists (false if `id` is unknown); clearing an untagged note
+    // still returns true.
+    bool clear_map_tag(const std::string& id);
 
     // Serialize the current state to the JSON string form written to disk.
     std::string serialize() const;

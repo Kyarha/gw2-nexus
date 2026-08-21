@@ -21,7 +21,7 @@
 | [003-notes-mvp](003-notes-mvp/spec.md) | 003-02 — coordinates | **DONE** |  |
 | [003-notes-mvp](003-notes-mvp/spec.md) | 🔬 003-03 — spike: map/chat action feasibility | **DONE** |  |
 | [003-notes-mvp](003-notes-mvp/spec.md) | 003-04 — coordinate actions | DRAFT |  |
-| [003-notes-mvp](003-notes-mvp/spec.md) | 003-05 — context-aware notes (optional MVP convenience) | DRAFT |  |
+| [003-notes-mvp](003-notes-mvp/spec.md) | 003-05 — context-aware notes (optional MVP convenience) | REVIEWED (claude/notes-context-aware-0…) |  |
 | [003-notes-mvp](003-notes-mvp/spec.md) | 003-06 — native-look theme layer | IN_PROGRESS (claude/notes-native-theme-0…) |  |
 | [003-notes-mvp](003-notes-mvp/spec.md) | 003-07 — note cards + core interactions | RECONCILED (claude/notes-native-theme-0…) |  |
 | [004-cursor-highlight](004-cursor-highlight/spec.md) | 004-01 — highlight-draw | **DONE** |  |

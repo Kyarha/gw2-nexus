@@ -13,6 +13,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include "core/context.h"
 #include "core/note_store.h"
 #include "persistence/atomic_file.h"
 
@@ -419,4 +420,191 @@ TEST_CASE("split_title_body derives a display title + body from note text (003-0
         CHECK(title.empty());
         CHECK(body.empty());
     }
+}
+// === slice 003-05: context-aware notes ======================================
+// The live character-name / map-id read and the map-change auto-surface trigger
+// are the manual in-game portion (MumbleLink) and are NOT asserted here. These
+// cover the off-game surface: the persisted tags (AC1) + migration, and the pure
+// surface/filter predicates that decide which notes are relevant (AC2/AC3/AC4).
+
+// --- AC1: character + map tags round-trip through disk ------------------------
+
+TEST_CASE("a note's context tags round-trip through disk unchanged (003-05 AC1)")
+{
+    TempStorePath tmp;
+    std::string id;
+    {
+        notes::NoteStore store(tmp.path);
+        id = store.add("guild bounty route");
+        REQUIRE(store.set_character(id, "Kyarha"));
+        REQUIRE(store.set_map_tag(id, 15u));
+    }
+    notes::NoteStore reloaded(tmp.path); // next-session reload
+    REQUIRE(reloaded.notes().size() == 1);
+    const notes::Note& n = reloaded.notes()[0];
+    REQUIRE(n.character.has_value());
+    CHECK(*n.character == "Kyarha");
+    REQUIRE(n.map_tag.has_value());
+    CHECK(*n.map_tag == 15u);
+}
+
+// --- AC1: set overwrites; clear removes; both write through -------------------
+
+TEST_CASE("set/clear character and map tags write through and overwrite (003-05 AC1)")
+{
+    TempStorePath tmp;
+    notes::NoteStore store(tmp.path);
+    const std::string id = store.add("note");
+
+    CHECK_FALSE(store.notes()[0].character.has_value());
+    CHECK_FALSE(store.notes()[0].map_tag.has_value());
+
+    CHECK(store.set_character(id, "Alt"));
+    CHECK(store.set_map_tag(id, 50u));
+    // Overwrite (at most one of each).
+    CHECK(store.set_character(id, "Main"));
+    CHECK(store.set_map_tag(id, 1155u));
+    CHECK(*store.notes()[0].character == "Main");
+    CHECK(*store.notes()[0].map_tag == 1155u);
+
+    // Write-through: the on-disk file reflects the tags with no explicit flush.
+    json on_disk = json::parse(read_disk(tmp.path));
+    CHECK(on_disk["notes"][0]["character"] == "Main");
+    CHECK(on_disk["notes"][0]["map"] == 1155u);
+
+    // Clearing removes each tag, and its on-disk key goes away.
+    CHECK(store.clear_character(id));
+    CHECK(store.clear_map_tag(id));
+    CHECK_FALSE(store.notes()[0].character.has_value());
+    CHECK_FALSE(store.notes()[0].map_tag.has_value());
+    on_disk = json::parse(read_disk(tmp.path));
+    CHECK_FALSE(on_disk["notes"][0].contains("character"));
+    CHECK_FALSE(on_disk["notes"][0].contains("map"));
+
+    // Unknown id is a no-op for all four.
+    CHECK_FALSE(store.set_character("no-such-id", "x"));
+    CHECK_FALSE(store.clear_character("no-such-id"));
+    CHECK_FALSE(store.set_map_tag("no-such-id", 1u));
+    CHECK_FALSE(store.clear_map_tag("no-such-id"));
+}
+
+// --- AC1: an untagged note omits both keys entirely --------------------------
+
+TEST_CASE("a note without context tags omits the keys entirely (003-05 AC1)")
+{
+    TempStorePath tmp;
+    notes::NoteStore store(tmp.path);
+    store.add("just text");
+
+    json on_disk = json::parse(read_disk(tmp.path));
+    REQUIRE(on_disk["notes"].size() == 1);
+    CHECK_FALSE(on_disk["notes"][0].contains("character"));
+    CHECK_FALSE(on_disk["notes"][0].contains("map"));
+}
+
+// --- AC1 migration: a v2 file (coordinate, no tags) loads and migrates to v3 --
+
+TEST_CASE("a v2 notes file (schema 2, no tags) loads and migrates forward (003-05 AC1)")
+{
+    TempStorePath tmp;
+    // Exactly what slice 003-02 wrote: schema 2, a coordinate-bearing note and a
+    // text-only note, neither carrying the 003-05 tags.
+    {
+        std::ofstream out(tmp.path, std::ios::binary);
+        out << R"({"schema_version":2,"notes":[)"
+               R"({"id":"1","text":"at the vista","coordinate":{"map_id":15,"x":1.0,"y":2.0}},)"
+               R"({"id":"2","text":"plain"}]})";
+    }
+
+    notes::NoteStore store(tmp.path); // must not throw
+    REQUIRE(store.notes().size() == 2);
+    // Migrated: tags absent -> nullopt; the coordinate is preserved untouched.
+    CHECK_FALSE(store.notes()[0].character.has_value());
+    CHECK_FALSE(store.notes()[0].map_tag.has_value());
+    REQUIRE(store.notes()[0].coordinate.has_value());
+    CHECK(store.notes()[0].coordinate->map_id == 15u);
+
+    // Any mutation rewrites the file at the current schema (v3), tags still absent.
+    store.add("fresh");
+    json on_disk = json::parse(read_disk(tmp.path));
+    CHECK(on_disk["schema_version"] == notes::NoteStore::kSchemaVersion); // == 3
+    REQUIRE(on_disk["notes"].size() == 3);
+    CHECK_FALSE(on_disk["notes"][0].contains("character"));
+    CHECK_FALSE(on_disk["notes"][0].contains("map"));
+}
+
+// --- AC1 tolerance: a wrong-typed tag degrades to "no tag", rest kept ---------
+
+TEST_CASE("a malformed context tag is dropped, the rest of the note is kept (003-05 AC1)")
+{
+    TempStorePath tmp;
+    {
+        // `character` non-string and `map` non-numeric: both must degrade to
+        // nullopt rather than rejecting the whole note.
+        std::ofstream out(tmp.path, std::ios::binary);
+        out << R"({"schema_version":3,"notes":[)"
+               R"({"id":"1","text":"kept","character":42,"map":"nope"}]})";
+    }
+    notes::NoteStore store(tmp.path);
+    REQUIRE(store.notes().size() == 1);
+    CHECK(store.notes()[0].text == "kept");
+    CHECK_FALSE(store.notes()[0].character.has_value());
+    CHECK_FALSE(store.notes()[0].map_tag.has_value());
+}
+
+// --- AC2/AC3 dimension predicates --------------------------------------------
+
+TEST_CASE("tagged_to_character / tagged_to_map match only the tagged dimension (003-05 AC2/AC3)")
+{
+    notes::Note untagged;      untagged.id = "0"; untagged.text = "t";
+    notes::Note byChar = untagged;  byChar.character = "Kyarha";
+    notes::Note byMap  = untagged;  byMap.map_tag   = 15u;
+
+    // Character dimension (AC2 filter basis).
+    CHECK(notes::tagged_to_character(byChar, "Kyarha"));
+    CHECK_FALSE(notes::tagged_to_character(byChar, "Someone")); // wrong name
+    CHECK_FALSE(notes::tagged_to_character(untagged, "Kyarha")); // no tag
+    CHECK_FALSE(notes::tagged_to_character(byMap, "Kyarha"));    // map-tagged only
+
+    // Map dimension (AC3 auto-surface basis).
+    CHECK(notes::tagged_to_map(byMap, 15u));
+    CHECK_FALSE(notes::tagged_to_map(byMap, 99u));   // wrong map
+    CHECK_FALSE(notes::tagged_to_map(untagged, 15u)); // no tag
+    CHECK_FALSE(notes::tagged_to_map(byChar, 15u));   // char-tagged only
+}
+
+// --- AC2+AC3+AC4 combined: note_surfaces_in AND-semantics ---------------------
+
+TEST_CASE("note_surfaces_in requires every set tag to match a known context (003-05)")
+{
+    notes::Note untagged; untagged.id = "0"; untagged.text = "t";
+    notes::Note byChar = untagged;  byChar.character = "Kyarha";
+    notes::Note byMap  = untagged;  byMap.map_tag    = 15u;
+    notes::Note byBoth = untagged;  byBoth.character = "Kyarha"; byBoth.map_tag = 15u;
+
+    const notes::Context onCharOnMap{ "Kyarha", 15u };
+    const notes::Context onCharOffMap{ "Kyarha", 99u };
+    const notes::Context offCharOnMap{ "Someone", 15u };
+    const notes::Context unknown{ std::nullopt, std::nullopt };
+
+    // Untagged note is context-neutral: it never auto-surfaces (AC4: nor is it
+    // hidden — but that is the UI's concern, not this predicate).
+    CHECK_FALSE(notes::note_surfaces_in(untagged, onCharOnMap));
+
+    // Single-dimension notes surface iff that dimension matches.
+    CHECK(notes::note_surfaces_in(byChar, onCharOnMap));
+    CHECK(notes::note_surfaces_in(byChar, onCharOffMap)); // map irrelevant to a char note
+    CHECK_FALSE(notes::note_surfaces_in(byChar, offCharOnMap));
+    CHECK(notes::note_surfaces_in(byMap, onCharOnMap));
+    CHECK(notes::note_surfaces_in(byMap, offCharOnMap)); // char irrelevant to a map note
+    CHECK_FALSE(notes::note_surfaces_in(byMap, onCharOffMap));
+
+    // Both-tagged: BOTH must match.
+    CHECK(notes::note_surfaces_in(byBoth, onCharOnMap));
+    CHECK_FALSE(notes::note_surfaces_in(byBoth, onCharOffMap));
+    CHECK_FALSE(notes::note_surfaces_in(byBoth, offCharOnMap));
+
+    // An unknown context dimension matches nothing (never surface on a guess).
+    CHECK_FALSE(notes::note_surfaces_in(byChar, unknown));
+    CHECK_FALSE(notes::note_surfaces_in(byMap, unknown));
 }
