@@ -122,7 +122,7 @@ combines place- and character-aware notes, world markers, and account-aware
 
 ## Use cases
 
-<!-- elicited: 2026-08-12 / status: filled / hash: sha256:62af8be31233 -->
+<!-- elicited: 2026-08-20 / status: filled / hash: sha256:a50bed064556 -->
 
 - UC-1: A player can jot and keep sticky notes in-game.
 - UC-2: A player can see what materials / items they still need to finish a
