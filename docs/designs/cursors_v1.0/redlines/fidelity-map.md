@@ -19,21 +19,33 @@
   reference render, so there is nothing to score them against. They stand as
   authored delta documentation of each preset's look.
 
-## Two colour surfaces (read this first)
+## CORRECTION (post-capture) — the panel is NOT themed
 
-The build draws the Cursor Settings window from **two** colour sources:
+> An earlier version of this map assumed the panel chrome came from the shared
+> `gw2_palette()`. **The in-game capture (2026-08-20) disproves that.** Probing
+> `cursor/src/entry.cpp` confirms it: the panel applies **no** `shared/theme` —
+> no theme include, no `PushPanelStyle`, no `TitleBar`, no `DrawThemedFrame`. Its
+> only styling is one hardcoded `IM_COL32(70,110,160,255)` blue preset-highlight.
+> So the shipped panel renders in **default ImGui** (grey window, system font,
+> default checkboxes/sliders). The gap is **structural**, not the sub-perceptual
+> colour nudges below. Slice **004-06** wires the shared theme in; the chrome
+> table below is therefore the **post-wiring expectation** (what the tokens map to
+> once `gw2_palette()` drives the chrome), not the current state.
+
+The window draws from **two** colour sources:
 
 1. **Panel chrome** — window fill, title bar, borders, brass/gold trim, buttons,
-   body text. These come from the **shared** `gw2_palette()` in
-   [`shared/theme/theme.h`](../../../../shared/theme/theme.h). Design principle
-   #6 (shared theme layer, no per-addon fork) makes that palette **authoritative
-   for chrome**. Where the cursor v1.0 mockup's chrome differs from the shared
-   theme, the shared theme wins → **approved divergence**, not a build defect.
+   body text. *Intended* source: the **shared** `gw2_palette()` in
+   [`shared/theme/theme.h`](../../../../shared/theme/theme.h). **Current source:
+   none — default ImGui.** Design principle #6 (shared theme, no per-addon fork)
+   makes `gw2_palette()` authoritative once wired; where the cursor v1.0 mockup's
+   chrome differs from the shared theme, the shared theme wins → **approved
+   divergence**, not a build defect.
 2. **Marker + preview** — the five preset signature hues, the cursor glyph, the
    soft-halo ring. These are **cursor-specific**, defined in
    [`cursor/core/cursor_settings.h`](../../../../cursor/core/cursor_settings.h)
-   (`signature_hue`, `outline_colour`, `fill_colour`). **This is the addon's own
-   scoreable colour surface.**
+   (`signature_hue`, `outline_colour`, `fill_colour`). **This surface already
+   matches** — the capture confirms the cyan Corner Reticle renders correctly.
 
 ## Marker + preview surface (cursor-specific — the real fidelity target)
 
@@ -52,7 +64,10 @@ The build draws the Cursor Settings window from **two** colour sources:
 deltas are two sub-perceptual near-black / near-white nudges. The addon's own
 colour surface is essentially already at fidelity.
 
-## Panel-chrome surface (governed by the shared theme)
+## Panel-chrome surface (post-wiring expectation — governed by the shared theme)
+
+> Reads as the target once 004-06 wires `gw2_palette()` into the panel. Until
+> then every row below is effectively a **MISS** in the build (default ImGui).
 
 | Redline token | Hex | Shared `Palette` field | Build hex | Verdict |
 |---|---|---|---|---|
@@ -71,9 +86,11 @@ colour surface is essentially already at fidelity.
 | body-strong | #ded4bd | — (`text` is #cfc7b6) | #cfc7b6 | **DIVERGENCE** (cursor mockup body label lighter) |
 | muted-warm | #c8bea5 | — | — | NEW (cursor field/tile labels) |
 
-**Chrome verdict:** the shared theme already matches the cursor v1.0 mockup on
-every load-bearing chrome token. The residual chrome deltas fall into two buckets
-below — none are "fix the cursor build."
+**Chrome verdict:** once wired, the shared theme matches the cursor v1.0 mockup on
+every load-bearing chrome token. The **primary work of 004-06 is wiring the theme
+in at all** (the panel is currently unthemed); after that, the only residual
+chrome deltas are the two approved-divergence buckets below — none are a
+per-addon palette fork.
 
 ## Measured deltas & dispositions
 
@@ -98,10 +115,20 @@ below — none are "fix the cursor build."
 
 The captured screenshot of the running `cursor.dll` Cursor Settings panel is
 scored against `cursor-settings.render.png` on the **default resting screen**.
-The cursor-specific surface (marker preview + preset swatches) is expected to
-pass on colour already; the loop's remaining signal is **layout/geometry** — the
-preview stage, the swatch row, the rail, control spacing — which measurement,
-not this colour map, will surface once the in-game capture is in hand.
+The dominant signal is **theme + layout**: the pre-004-06 build is unthemed
+default ImGui, so it scores low until the shared theme is wired and the layout is
+brought toward the redline. The marker preview already matches and should not
+regress. The loop's residual signal after wiring is control spacing / section
+order — which measurement, not this colour map, surfaces per capture.
+
+**Approved divergences the eval rubric MUST encode (else they cap the score):**
+- **World backdrop + skill-bar silhouette** — CD decoration in the render; in
+  game the real scene sits behind the panel. Not drawn by `cursor.dll`.
+- **Left toolbar rail** (Cursor / Notes / Settings buttons) — Nexus QuickAccess
+  chrome, not this addon.
+- **BEHAVIOUR section** — "Show overlay", "Clip cursor", "Freeze after dragging"
+  rows belong to 004-03 (DRAFT) + 004-05 (DEFERRED), not built. Their absence
+  must not be scored (slice A3). 004-06 must not implement them.
 
 ## Next step (off-game build + capture — manual)
 

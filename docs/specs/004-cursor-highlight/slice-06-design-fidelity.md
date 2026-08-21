@@ -1,84 +1,104 @@
 ---
-status: DRAFT
-dependencies: [004-02]
+status: IN_PROGRESS
+dependencies: [004-02, 003-06]
 last_verified:
 frame_review: true
 design_review: true
+claimed_by: claude/cursor-fidelity-004-06
 ---
 
 <!-- jig grounding (spec 064-02 / ADR-0020): ground factual claims about runnable
      surfaces by probe first (run it / read source) or a citation, else mark them
      as assumptions in this slice's `## Assumptions` — never assert unverified. -->
 
-## Slice 004-06 — design fidelity (build-to-redline pass)
+## Slice 004-06 — cursor native-look theme layer (build-to-redline)
 
-**Goal:** Close the visual gap between the shipped **Cursor Settings** panel
-(delivered feature-complete in 004-02) and its design, by **measurement rather
-than eyeballing**. Run one `vellum:build-to-redline` fidelity loop against the
-committed cursor redline cascade — resolve → validate → map colours to the
-`cursor-core` palette → build → screenshot-vs-reference → score → close the gap —
-and record the residual, approved divergences, and colour deltas in a fidelity
-map. This is the cursor sibling of the Notes v1.2 redline pass (which ran under
-slice 003-06); it does **not** add or change features.
+**Goal:** Bring the shipped **Cursor Settings** panel up to its design by
+**building to the redline and closing the gap by measurement**. 004-02 delivered
+the panel's *function* (all APPEARANCE controls + live preview) but rendered it in
+**default ImGui** — no native theme. This slice **applies the shared `shared/theme`
+layer + the redline's layout/typography** to the panel and verifies it with one
+`vellum:build-to-redline` loop (resolve → validate → map colours → build →
+screenshot-vs-reference → score → close the gap). Build **and** fidelity live in
+this one slice; the redline is how the build is verified, not separate ceremony.
 
 Redline inputs (committed with this slice):
 [docs/designs/cursors_v1.0/redlines/](../../designs/cursors_v1.0/redlines/) —
-`base.md`, `cursor-settings.screen.md`, five `*.state.md` (fill-on + four style
-variants), and the reference render `cursor-settings.render.png`.
+`base.md`, `cursor-settings.screen.md`, five `*.state.md`, reference render
+`cursor-settings.render.png`, resolved redline, and `fidelity-map.md`.
 
 **DoR (Definition of Ready):**
 - ✅ 004-02 DONE — the panel draws the full APPEARANCE block (5 presets, colour,
-  size, opacity, fill) with a live preview and a persisted settings record.
-- ✅ Redline cascade in-tree — CD-authored base + screen + state files plus a 1×
-  reference render, under `docs/designs/cursors_v1.0/redlines/`.
-- ✅ Build path proven — the cursor addon builds via GitHub Actions
-  (`cursor.dll`) and renders in-game, per 004-01/004-02.
+  size, opacity, outline, fill) with a live preview and a persisted settings
+  record. **Function is complete; only the look is missing.**
+- ✅ Shared theme available — `shared/theme` (003-06) ships `PushPanelStyle` /
+  `TitleBar` / `DrawThemedFrame` in
+  [`shared/theme/theme_imgui.h`](../../../../shared/theme/theme_imgui.h); the
+  cursor DLL already links `shared-core` (whose include root is `shared/`), so
+  the theme is a `#include` away. The cursor panel currently applies **none** of
+  it (probed: `cursor/src/entry.cpp` has no theme include; its only styling is a
+  hardcoded `IM_COL32(70,110,160,255)` preset-highlight button).
+- ✅ Redline cascade in-tree + resolves + validates.
+- ✅ Build path proven — the addon builds via GitHub Actions (`cursor.dll`) and
+  renders in-game, per 004-01/004-02.
 
 **Acceptance Criteria:**
 
-1. **Resolved redline validates.** `resolve_redline.py base.md
-   cursor-settings.screen.md` flattens the **default resting screen** into a
-   complete redline that passes `validate_redline.py` with no schema errors. The
-   five `*.state.md` variants carry no independent reference render, so they are
-   **not** resolved-for-scoring (per A1) — they stand as authored design-delta
-   documentation, mirroring the Notes v1.2 pass.
-2. **Colour map to `cursor-core` palette.** Every in-scope redline colour token
-   is mapped to its build-side field (the cursor palette / theme source), each
-   row marked MATCH / DELTA / NEW — mirroring the Notes `fidelity-map.md`.
-3. **Reference capture is honest.** The build is screenshotted in the same
-   default resting state as `cursor-settings.render.png` (1× density), captured
-   from the real `cursor.dll` in-game — not a mock — and scored by the pinned
-   `servo:design-eval` vision judge.
-4. **In-scope deltas closed.** Each measured delta on the scoreable surface is
-   either closed in the build or explicitly recorded as an **approved divergence
-   that must not be scored against** (with rationale), so no silent gaps remain.
-5. **Feature-frozen.** No behaviour or settings-schema change — the diff is
-   styling only (palette / draw geometry). Any change that would touch behaviour
-   is out of scope and, if warranted, spun into its own slice.
+1. **Shared theme applied (not forked).** The panel wraps its window in
+   `PushPanelStyle`/`PopPanelStyle`, draws the native title bar via `TitleBar`
+   and the frame via `DrawThemedFrame`, and takes all chrome colours/metrics from
+   `gw2_palette()`/`gw2_metrics()` — **no per-addon palette fork** (principle #6).
+   The hardcoded blue preset-highlight is replaced by the themed active-button
+   colour.
+2. **Section heads + control styling match the redline.** APPEARANCE / PREVIEW
+   read as themed section heads (gold, per the redline type scale), and controls
+   (preset picker, sliders, toggles, swatches, Reset) render in the themed
+   colours rather than default ImGui grey.
+3. **Layout follows the redline within measured tolerance.** The panel converges
+   on the redline's structure for the in-scope surface (title bar → APPEARANCE
+   block → PREVIEW stage), refined by the design-eval deltas — not eyeballed.
+4. **Marker preview unchanged.** The preset marker in the preview (and on the
+   pointer) is untouched — it already matches (`fidelity-map.md`), and this slice
+   must not regress it.
+5. **Scored against the reference.** The themed build is captured from the real
+   `cursor.dll` in the default resting state and scored by `servo:design-eval`
+   against `cursor-settings.render.png`; the loop repeats until the composite
+   meets the eval threshold. The passing verdict is the slice's design
+   attestation.
+6. **No behaviour / no schema change.** The diff is chrome + layout only. The
+   settings record (`cursor_settings.h` schema) and all control *behaviour* are
+   untouched; `cursor-core` tests stay green unchanged.
 
 **Assumptions (per-slice, drives `frame_review` + `design_review`):**
 - **A1 — only the default resting screen is scoreable.** The reference render is
   the default screen; the five state files describe deltas but have no separate
-  1× render, so — as in the Notes pass — they are feature-gated context, not
-  independent fidelity targets. Scoring targets the default screen.
-- **A2 — capture is not local/headless.** The scored screenshot must come from
-  the real in-game build (push → Actions → `cursor.dll` → CrossOver), so the
-  loop's BUILD + CAPTURE steps are manual per the project's off-game build
-  workflow; everything else (resolve, validate, map, score) is stack-blind.
+  1× render, so they are feature-gated context, not independent fidelity targets.
+- **A2 — capture is off-game / not headless.** The scored screenshot comes from
+  the real in-game build (push → Actions → `cursor.dll` → CrossOver); BUILD +
+  CAPTURE are manual per the project's off-game workflow. Everything else
+  (resolve, validate, map, score) is stack-blind.
+- **A3 — the render depicts a BEHAVIOUR section this addon has not built.** The
+  reference render shows "Show overlay" (Always/While-moving/Never), "Clip
+  cursor", and "Freeze after dragging" rows — these belong to **004-03** (DRAFT)
+  and **004-05** (DEFERRED), not built here. They are an **approved divergence**:
+  scoring must not penalise their absence, and this slice must **not** implement
+  them (that would be feature work, violating AC6). The scoreable target is the
+  title bar + APPEARANCE block + PREVIEW stage.
 
 **DoD:**
 - [ ] All ACs pass.
-- [ ] Resolved redline + `fidelity-map.md` committed under
-      `docs/designs/cursors_v1.0/redlines/`.
+- [ ] `fidelity-map.md` reflects the *actual* build (corrected from the
+      pre-capture assumption that the panel used the shared theme).
+- [ ] Shared theme wired into `cursor/src/entry.cpp` (chrome + section heads +
+      controls); no `cursor-core` change; suite green unchanged.
 - [ ] Scored screenshot(s) + design-eval verdict recorded; residual gap and
-      approved divergences written down.
-- [ ] In-scope deltas closed in `cursor-core` (styling only), full suite green.
+      approved divergences (incl. A3 BEHAVIOUR rows) written down.
 - [ ] Reviewed by `reviewer` subagent (design_review: fidelity + craft).
 - [ ] Deviation log + reconciliation sweep produced.
 
-**Anti-horizontal-phasing check:** After this slice the shipped Cursor Settings
-panel visibly matches its design on the scoreable surface — a measured,
-recorded fidelity result the player sees, not an internal refactor.
+**Anti-horizontal-phasing check:** After this slice the Cursor Settings panel the
+player opens looks native — themed frame, title bar, gold section heads — a
+visible improvement they see immediately, not an internal refactor.
 
 ### Deviation log (after reconciliation)
 
@@ -89,8 +109,8 @@ _TODO at reconciliation._
 | Artifact | Disposition | Rationale |
 |----------|-------------|-----------|
 | `docs/specs/README.md` | `updated` | _TODO: regenerated by `workflow.py status-board`._ |
-| `docs/designs/cursors_v1.0/redlines/**` | `updated` | _TODO: resolved redline + fidelity map added._ |
-| `docs/architecture.md` | `no-op` | _TODO: checked — styling only, no module-boundary change._ |
+| `docs/designs/cursors_v1.0/redlines/**` | `updated` | _TODO: resolved redline + corrected fidelity map._ |
+| `docs/architecture.md` | `no-op` | _TODO: checked — reuses shared/theme, no new module boundary._ |
 | `docs/product-vision.md` | `no-op` | _TODO: checked for scope drift._ |
-| `docs/memory/**` | `no-op` | _TODO: capture any cursor-palette / redline gotcha if non-obvious._ |
+| `docs/memory/**` | `no-op` | _TODO: capture any cursor-theme wiring gotcha if non-obvious._ |
 | `docs/refinement-todo.md` | `no-op` | _TODO: checked._ |

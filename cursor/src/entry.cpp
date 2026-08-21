@@ -34,6 +34,12 @@
 #include "core/marker.h"
 #include "../assets/preset_textures_data.h"
 
+// Native-look theme (003-06). The cursor DLL links shared-core, whose include
+// root is shared/, so these resolve directly. Applied stack-scoped around our
+// window only (see AddonRender) — never mutating the global ImGui style.
+#include "theme/theme.h"
+#include "theme/theme_imgui.h"
+
 namespace {
 
 // Identifiers Nexus keys registrations by; must be stable across load/unload.
@@ -275,6 +281,16 @@ void RenderPanel()
     if (!g_Store) { return; }
     cursor::CursorSettings s = g_Store->settings(); // working copy
 
+    const shared::theme::Palette pal = shared::theme::gw2_palette();
+
+    // A themed section head — gold, matching the redline type scale — replacing
+    // default-grey TextUnformatted labels.
+    auto SectionHead = [&pal](const char* label) {
+        ImGui::PushStyleColor(ImGuiCol_Text, shared::theme::to_vec4(pal.text_gold));
+        ImGui::TextUnformatted(label);
+        ImGui::PopStyleColor();
+    };
+
     bool enabled = s.enabled;
     if (ImGui::Checkbox("Enable cursor finder", &enabled)) { s.enabled = enabled; }
 
@@ -282,7 +298,7 @@ void RenderPanel()
     if (ImGui::Checkbox("Show above Nexus windows", &above)) { s.draw_above_windows = above; }
 
     ImGui::Separator();
-    ImGui::TextUnformatted("Appearance");
+    SectionHead("Appearance");
 
     // Preset picker (AC1): a row of buttons. Picking a preset also adopts its
     // signature hue (AC2 default), mirroring the v1.0 mockup's behaviour.
@@ -297,13 +313,20 @@ void RenderPanel()
     {
         if (i > 0) { ImGui::SameLine(); }
         const bool active = (s.preset == kPresets[i].p);
-        if (active) { ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(70, 110, 160, 255)); }
+        // Selected preset uses the themed active-button + gold border/text
+        // instead of a hardcoded blue, so the picker reads native (principle #6).
+        if (active)
+        {
+            ImGui::PushStyleColor(ImGuiCol_Button, shared::theme::to_vec4(pal.button_active));
+            ImGui::PushStyleColor(ImGuiCol_Border, shared::theme::to_vec4(pal.button_border));
+            ImGui::PushStyleColor(ImGuiCol_Text, shared::theme::to_vec4(pal.button_text));
+        }
         if (ImGui::Button(kPresets[i].label))
         {
             s.preset = kPresets[i].p;
             s.colour = cursor::signature_hue(kPresets[i].p); // AC2 default hue
         }
-        if (active) { ImGui::PopStyleColor(); }
+        if (active) { ImGui::PopStyleColor(3); }
     }
 
     // Colour (AC2): tints the colour layer.
@@ -384,7 +407,7 @@ void RenderPanel()
     // Live preview (AC8): the current marker in a fixed box so the player sees
     // edits without hunting for the pointer.
     ImGui::Separator();
-    ImGui::TextUnformatted("Preview");
+    SectionHead("Preview");
     const float box = static_cast<float>(cursor::kSizeMax) + 24.0f;
     const ImVec2 origin = ImGui::GetCursorScreenPos();
     const ImVec2 preview_center(origin.x + box * 0.5f, origin.y + box * 0.5f);
@@ -442,12 +465,38 @@ void AddonRender()
                             ImGuiCond_FirstUseEver, ImVec2(0.5f, 0.5f));
     ImGui::SetNextWindowSize(ImVec2(360.0f, 580.0f), ImGuiCond_FirstUseEver);
 
-    const ImGuiWindowFlags flags = ImGuiWindowFlags_NoCollapse;
+    // Native-look theme (004-06): apply the shared theme's colors + metrics
+    // around our window only (stack-scoped, so other addons' style is untouched),
+    // draw our own native title bar (NoTitleBar) + the themed frame, then run the
+    // existing RenderPanel body. No per-addon palette fork (principle #6).
+    const shared::theme::Palette pal = shared::theme::gw2_palette();
+    const shared::theme::Metrics met = shared::theme::gw2_metrics();
+    const shared::theme::ThemeScope scope =
+        shared::theme::PushPanelStyle(pal, met); // before Begin: window vars apply
+
+    const ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar |
+                                   ImGuiWindowFlags_NoCollapse;
     if (ImGui::Begin(kWindowName, &g_PanelOpen, flags))
     {
+        const ImVec2 w_min  = ImGui::GetWindowPos();
+        const ImVec2 w_size = ImGui::GetWindowSize();
+        shared::theme::DrawThemedFrame(
+            ImGui::GetWindowDrawList(), w_min,
+            ImVec2(w_min.x + w_size.x, w_min.y + w_size.y), pal, met);
+
+        // Native title bar replaces ImGui's default; clicking its close X closes
+        // the panel, matching the previous window-close affordance.
+        if (shared::theme::TitleBar("Cursor Finder", "Pointer highlight", "C",
+                                    pal, met))
+        {
+            g_PanelOpen = false;
+        }
+
         RenderPanel();
     }
     ImGui::End();
+
+    shared::theme::PopPanelStyle(scope);
 }
 
 // Keybind handler (INPUTBINDS_PROCESS): open/close the settings panel on press.
