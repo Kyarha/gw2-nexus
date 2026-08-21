@@ -2,7 +2,7 @@
 // Cursor Finder addon (slices 004-01 + 004-02).
 //
 // These cover: settings defaults, JSON round-trip + write-through durability,
-// schema versioning + forward migration (v1->v3), field clamping, colour hex
+// schema versioning + forward migration (v1->v4), field clamping, colour hex
 // round-trip, Reset-to-defaults, and pointer geometry centering. The Windows/
 // ImGui surface (rendering, keybind, QuickAccess, panel, live preview, textures)
 // is the manual in-game portion and is NOT asserted here.
@@ -17,6 +17,7 @@
 
 #include "core/cursor_store.h"
 #include "core/marker.h"
+#include "core/drag_freeze.h"
 #include "persistence/atomic_file.h"
 
 namespace fs = std::filesystem;
@@ -208,7 +209,7 @@ TEST_CASE("appearance factory defaults match the v1.0 design (004-02)")
     CHECK(s.fill_colour == cursor::Rgb{0xf2, 0xf2, 0xf6});  // near-white
     CHECK(s.fill_size_pct == 70);                           // v3: fill size %
     // Schema bumped for the appearance fields (v3 added fill_size_pct).
-    CHECK(cursor::CursorSettings::kSchemaVersion == 3);
+    CHECK(cursor::CursorSettings::kSchemaVersion == 4);
 }
 
 // --- 004-02 AC8: every appearance field round-trips through disk ---------------
@@ -227,6 +228,7 @@ TEST_CASE("every appearance field round-trips through disk (004-02 AC8)")
     edited.fill_opacity_pct = 80;
     edited.fill_colour      = cursor::Rgb{0x00, 0xff, 0x00};
     edited.fill_size_pct    = 45;
+    edited.freeze_after_drag = true; // v4 (004-07)
     {
         cursor::CursorStore store(tmp.path);
         CHECK(store.set(edited)); // write-through, value changed
@@ -248,7 +250,7 @@ TEST_CASE("appearance mutations are written through with no explicit flush (004-
     json on_disk = json::parse(read_disk(tmp.path));
     CHECK(on_disk["preset"] == "radar_dash");
     CHECK(on_disk["colour"] == "#0a0b0c");
-    CHECK(on_disk["schema_version"] == 3);
+    CHECK(on_disk["schema_version"] == 4);
 }
 
 // --- 004-02 AC8: the 004-01 -> 004-02 migration -------------------------------
@@ -275,7 +277,7 @@ TEST_CASE("a v1 (004-01) file loads with appearance defaulted, then re-stamps v2
     // Any mutation re-stamps the file at v2 with the appearance keys present.
     store.set_enabled(true);
     json on_disk = json::parse(read_disk(tmp.path));
-    CHECK(on_disk["schema_version"] == 3);
+    CHECK(on_disk["schema_version"] == 4);
     REQUIRE(on_disk.contains("preset"));
     CHECK(on_disk["preset"] == "pulse_ring");
     CHECK(on_disk["outline"] == true);
@@ -398,4 +400,113 @@ TEST_CASE("the pulse-ring radius is half the marker size (AC8)")
     CHECK(cursor::pulse_ring_radius(200) == doctest::Approx(100.0f));
     CHECK(cursor::pulse_ring_radius(0)   == doctest::Approx(0.0f));
     CHECK(cursor::pulse_ring_radius(-5)  == doctest::Approx(0.0f));
+}
+
+// --- 004-07: freeze-cursor-after-dragging state machine -----------------------
+
+namespace {
+constexpr float kFrame = 0.016f; // ~one 60fps frame
+
+// Assert a returned draw position.
+void expect_at(cursor::Vec2 got, float x, float y)
+{
+    CHECK(got.x == doctest::Approx(x));
+    CHECK(got.y == doctest::Approx(y));
+}
+} // namespace
+
+TEST_CASE("toggle OFF is a pass-through: never freezes, returns the live pointer (004-07 AC4)")
+{
+    cursor::DragFreeze f;
+    // A would-be drag while disabled must never hold the marker.
+    expect_at(f.update(false, true,  {100, 100}, kFrame), 100, 100);
+    expect_at(f.update(false, true,  {140, 100}, kFrame), 140, 100); // moved while held
+    expect_at(f.update(false, false, {140, 100}, kFrame), 140, 100); // released
+    CHECK_FALSE(f.frozen());
+    expect_at(f.update(false, false, {300, 300}, kFrame), 300, 300);
+    CHECK_FALSE(f.frozen());
+}
+
+TEST_CASE("a click-drag freezes the marker at the release position (004-07 AC2)")
+{
+    cursor::DragFreeze f;
+    expect_at(f.update(true, true,  {100, 100}, kFrame), 100, 100); // press
+    expect_at(f.update(true, true,  {130, 100}, kFrame), 130, 100); // moved 30 > threshold => drag
+    expect_at(f.update(true, false, {130, 100}, kFrame), 130, 100); // release => freeze here
+    CHECK(f.frozen());
+    // Held still: stays frozen at the release point.
+    expect_at(f.update(true, false, {130, 100}, kFrame), 130, 100);
+    CHECK(f.frozen());
+}
+
+TEST_CASE("freeze resumes tracking once the pointer moves past the threshold (004-07 AC3)")
+{
+    cursor::DragFreeze f;
+    f.update(true, true,  {100, 100}, kFrame);
+    f.update(true, true,  {130, 100}, kFrame);
+    f.update(true, false, {130, 100}, kFrame); // frozen at {130,100}
+    REQUIRE(f.frozen());
+    // A tiny jitter within the threshold keeps it frozen.
+    expect_at(f.update(true, false, {131, 100}, kFrame), 130, 100);
+    CHECK(f.frozen());
+    // A real move releases it and tracks the live pointer again.
+    expect_at(f.update(true, false, {160, 100}, kFrame), 160, 100);
+    CHECK_FALSE(f.frozen());
+}
+
+TEST_CASE("a plain click (short, still) does NOT freeze (004-07 AC2)")
+{
+    cursor::DragFreeze f;
+    expect_at(f.update(true, true,  {100, 100}, kFrame), 100, 100); // brief press
+    expect_at(f.update(true, false, {100, 100}, kFrame), 100, 100); // quick release, no move
+    CHECK_FALSE(f.frozen());
+}
+
+TEST_CASE("a long still hold counts as a drag (mouse-look centre-lock case) (004-07 A1/A3)")
+{
+    cursor::DragFreeze f;
+    // Held in place past the duration threshold: no movement (centre-locked), but
+    // the duration arm marks it a drag.
+    for (int i = 0; i < 15; ++i) // 15 * 0.016 = 0.24s > kDragHoldSeconds
+    {
+        f.update(true, true, {100, 100}, kFrame);
+    }
+    // Release at the position the OS reports on button-up.
+    expect_at(f.update(true, false, {100, 100}, kFrame), 100, 100);
+    CHECK(f.frozen());
+}
+
+TEST_CASE("turning the toggle off mid-freeze releases the marker (004-07 AC4)")
+{
+    cursor::DragFreeze f;
+    f.update(true, true,  {100, 100}, kFrame);
+    f.update(true, true,  {130, 100}, kFrame);
+    f.update(true, false, {130, 100}, kFrame);
+    REQUIRE(f.frozen());
+    // Toggle off: immediate pass-through, no stuck marker.
+    expect_at(f.update(false, false, {130, 100}, kFrame), 130, 100);
+    CHECK_FALSE(f.frozen());
+}
+
+TEST_CASE("a v3 file (no freeze_after_drag) migrates forward to v4 with the default (004-07)")
+{
+    TempStorePath tmp;
+    {
+        std::ofstream out(tmp.path);
+        out << R"({"schema_version":3,"enabled":true,"draw_above_windows":true,)"
+               R"("preset":"pulse_ring","colour":"#ff2d9b","size_px":96,)"
+               R"("opacity_pct":90,"outline":true,"outline_colour":"#141418",)"
+               R"("fill":false,"fill_opacity_pct":35,"fill_colour":"#f2f2f6",)"
+               R"("fill_size_pct":70})";
+    }
+    cursor::CursorStore store(tmp.path);
+    CHECK(store.settings().freeze_after_drag == false); // absent -> default
+
+    // Re-stamped at v4 with the field present on the next write-through.
+    cursor::CursorSettings next = store.settings();
+    next.freeze_after_drag = true;
+    CHECK(store.set(next));
+    json on_disk = json::parse(read_disk(tmp.path));
+    CHECK(on_disk["schema_version"] == 4);
+    CHECK(on_disk["freeze_after_drag"] == true);
 }

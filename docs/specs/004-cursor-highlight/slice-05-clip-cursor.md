@@ -11,19 +11,24 @@ frame_review: true
 
 ## Slice 004-05 — pointer confinement (clip cursor) + freeze-after-drag
 
-> **DEFERRED.** The two behaviours here touch *input behavior* rather than
-> drawing, and their correctness is dominated by lifetime edge cases. Parked
-> until the cosmetic core (004-01 → 004-03) is shipped and in use.
+> **DEFERRED.** This behaviour touches *input behavior* rather than drawing, and
+> its correctness is dominated by lifetime edge cases (never leave the pointer
+> trapped). Parked until the cosmetic core (004-01 → 004-03) is shipped and in use.
+>
+> **Scope narrowed:** the mockup's **Freeze cursor after dragging** toggle was
+> the *draw-only* half of this slice; it has been **split out to
+> [004-07](slice-07-freeze-after-drag.md)** and no longer lives here. 004-05 is
+> now **Clip cursor only** — the Win32 pointer-confinement half.
 >
 > **Resolution trigger:** cosmetic core (004-01 → 004-03) shipped and in use, and
 > a confirmed player desire for pointer confinement.
 
-**Goal:** The mockup's **BEHAVIOUR** input toggles: **Clip cursor** (per combat
+**Goal:** The mockup's **BEHAVIOUR** input toggle **Clip cursor** (per combat
 state, Never / Always) via Win32 `ClipCursor()` to confine the OS pointer to the
-game window, and **Freeze cursor after dragging** ("hold the overlay in place
-when you release a drag"), with **disciplined release** so the mouse is never
-left trapped. Values per
+game window, with **disciplined release** so the mouse is never left trapped.
+Values per
 [Cursor Settings.dc.html](../../designs/cursors_v1.0/Cursor Settings.dc.html).
+*(Freeze-after-drag moved to [004-07](slice-07-freeze-after-drag.md).)*
 
 **DoR (Definition of Ready):**
 - ⛔ 004-01 → 004-03 shipped (the cosmetic core).
@@ -35,9 +40,7 @@ left trapped. Values per
 1. **Clip cursor, per combat state.** A per-combat-state setting (Out of combat /
    In combat, each Never / Always) confines the pointer to the game window via
    `ClipCursor()` when its column is "Always"; default Never/Never.
-2. **Freeze cursor after dragging.** An opt-in toggle holds the overlay in place
-   when a drag is released, per the mockup.
-3. **Disciplined release — the load-bearing AC.** Any clip is released whenever it
+2. **Disciplined release — the load-bearing AC.** Any clip is released whenever it
    must not persist: on addon `Unload`, on **window focus loss / alt-tab**, and on
    game exit. The pointer is never left confined after the addon or the game's
    focus goes away.

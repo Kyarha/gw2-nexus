@@ -32,6 +32,7 @@
 
 #include "core/cursor_store.h"
 #include "core/marker.h"
+#include "core/drag_freeze.h"
 #include "../assets/preset_textures_data.h"
 
 // Native-look theme (003-06). The cursor DLL links shared-core, whose include
@@ -62,6 +63,10 @@ AddonDefinition_t g_AddonDef{};
 AddonAPI_t*        g_API    = nullptr;
 cursor::CursorStore* g_Store = nullptr;
 bool               g_PanelOpen = false;
+
+// Freeze-after-drag state (004-07). Persists across frames; a pass-through when
+// the toggle is off. Only the render thread touches it.
+cursor::DragFreeze g_Freeze;
 
 // --- preset layer texture table ----------------------------------------------
 
@@ -398,6 +403,17 @@ void RenderPanel()
     }
     } // caps.fill_shape != None
 
+    // Behaviour (004-07). Freeze-after-drag holds the overlay in place when a
+    // drag is released, so the player can find where the cursor landed.
+    ImGui::Separator();
+    SectionHead("Behaviour");
+    bool freeze = s.freeze_after_drag;
+    if (ImGui::Checkbox("Freeze cursor after dragging", &freeze))
+    {
+        s.freeze_after_drag = freeze;
+    }
+    ImGui::TextDisabled("Hold the overlay in place when you release a drag.");
+
     ImGui::Separator();
     if (ImGui::Button("Reset to defaults")) { s = cursor::CursorSettings::defaults(); }
 
@@ -450,11 +466,25 @@ void AddonRender()
             // Anchor on the OS cursor hotspot — the true click point UC-14 needs
             // (AC2). The core geometry keeps the marker centered on it.
             const ImVec2 mouse = CurrentPointer();
+
+            // Freeze-after-drag (004-07): read the physical mouse buttons via
+            // Win32 (reliable even while the game has mouse capture, unlike
+            // io.MouseDown) and let cursor-core decide the draw position — the
+            // live pointer, or a held position after a drag-release. Draw-only:
+            // no input is sent and the OS pointer is never confined.
+            const bool button_down =
+                (::GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0 ||
+                (::GetAsyncKeyState(VK_RBUTTON) & 0x8000) != 0;
+            const cursor::Vec2 draw = g_Freeze.update(
+                s.freeze_after_drag, button_down,
+                cursor::Vec2{mouse.x, mouse.y}, ImGui::GetIO().DeltaTime);
+            const ImVec2 center(draw.x, draw.y);
+
             // Foreground draw list = above the addon's own windows; background =
             // below them ("Show above Nexus windows").
             ImDrawList* dl = s.draw_above_windows ? ImGui::GetForegroundDrawList()
                                                   : ImGui::GetBackgroundDrawList();
-            DrawMarker(dl, mouse, s);
+            DrawMarker(dl, center, s);
         }
     }
 

@@ -149,6 +149,9 @@ CursorSettings read_settings(const json& doc)
     {
         s.fill_size_pct = *n;
     }
+    // v4 (004-07) behaviour. Absent in a v1-v3 file -> keeps its default (false):
+    // that IS the v3 -> v4 forward migration.
+    if (auto b = read_bool(doc, "freeze_after_drag")) { s.freeze_after_drag = *b; }
     return s;
 }
 
@@ -197,6 +200,8 @@ std::string CursorStore::serialize() const
     doc["fill_opacity_pct"]   = settings_.fill_opacity_pct;
     doc["fill_colour"]        = to_hex(settings_.fill_colour);
     doc["fill_size_pct"]      = settings_.fill_size_pct;
+    // v4 (004-07) behaviour.
+    doc["freeze_after_drag"]  = settings_.freeze_after_drag;
     return doc.dump(2);
 }
 

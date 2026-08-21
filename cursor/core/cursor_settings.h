@@ -8,6 +8,7 @@
 //   v2 (004-02): + appearance — preset, colour, size, opacity, outline
 //                (toggle + colour), fill (toggle + opacity + colour)
 //   v3 (004-02): + fill_size_pct (fill size as a % of the preset's max extent)
+//   v4 (004-07): + freeze_after_drag (hold the overlay in place on drag-release)
 // See cursor_store.h for the load/save/migrate machinery.
 #pragma once
 
@@ -109,7 +110,7 @@ inline std::optional<Preset> preset_from_slug(std::string_view s)
 struct CursorSettings {
     // Bump when the on-disk shape changes; older/absent-version files migrate
     // forward (see cursor_store.cpp).
-    static constexpr int kSchemaVersion = 3;
+    static constexpr int kSchemaVersion = 4;
 
     // --- v1 (004-01) ---------------------------------------------------------
     // Master on/off for the marker. Default ON: enabling the addon at all is an
@@ -153,6 +154,13 @@ struct CursorSettings {
     // [kFillSizeMin, kFillSizeMax].
     int  fill_size_pct = 70;
 
+    // --- v4 (004-07) behaviour ----------------------------------------------
+    // "Freeze cursor after dragging" (mockup BEHAVIOUR). When on, releasing a
+    // drag holds the drawn overlay at its release position until the pointer next
+    // moves, so the player can find where the cursor landed. Draw-only — sends no
+    // input and never confines the OS pointer (that is 004-05). Default OFF.
+    bool freeze_after_drag = false;
+
     // The factory default record (first run, or recovery from a corrupt file).
     static CursorSettings defaults() { return CursorSettings{}; }
 };
@@ -171,7 +179,8 @@ inline bool operator==(const CursorSettings& a, const CursorSettings& b)
            a.fill == b.fill &&
            a.fill_opacity_pct == b.fill_opacity_pct &&
            a.fill_colour == b.fill_colour &&
-           a.fill_size_pct == b.fill_size_pct;
+           a.fill_size_pct == b.fill_size_pct &&
+           a.freeze_after_drag == b.freeze_after_drag;
 }
 inline bool operator!=(const CursorSettings& a, const CursorSettings& b)
 {

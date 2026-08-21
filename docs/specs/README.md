@@ -29,6 +29,7 @@
 | [004-cursor-highlight](004-cursor-highlight/spec.md) | 004-04 — per-character settings | ABANDONED |  |
 | [004-cursor-highlight](004-cursor-highlight/spec.md) | 004-05 — pointer confinement (clip cursor) + freeze-after-drag | DEFERRED |  |
 | [004-cursor-highlight](004-cursor-highlight/spec.md) | 004-06 — cursor native-look theme layer (build-to-redline) | IN_PROGRESS (claude/cursor-fidelity-004-06) | applies shared/theme + redline layout to the 004-02 panel |
+| [004-cursor-highlight](004-cursor-highlight/spec.md) | 004-07 — freeze cursor after dragging | IN_PROGRESS (claude/cursor-fidelity-004-06) | split from 004-05 (draw-only half); hold overlay on drag-release |
 
 ## Deferred slices
 

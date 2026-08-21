@@ -12,6 +12,7 @@
 add_library(cursor-core STATIC
   core/cursor_store.cpp
   core/marker.cpp
+  core/drag_freeze.cpp
 )
 target_include_directories(cursor-core PUBLIC .)
 target_compile_features(cursor-core PUBLIC cxx_std_17)
