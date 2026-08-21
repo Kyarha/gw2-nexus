@@ -63,7 +63,9 @@ principle #2). Delivers UC-9 (map auto-appear) and UC-10 (per-character notes).
 **DoD:**
 - [ ] AC1–AC5 pass; map auto-surface verified in-game by tagging a note to a map,
       leaving, and re-entering (recorded with a screenshot in the deviation log).
-      _(In-game portion — owner-verified via CI build; pending.)_
+      _(In-game, owner via CI build: **AC1 tagging confirmed 2026-08-20** (see
+      deviation log); AC2 filter + AC3 auto-surface still pending — box stays open
+      until those are exercised.)_
 - [x] Automated coverage where it applies: the **tag-match/filter logic** (given
       character X and map Y, which notes surface) and the **record migration** are
       unit-tested off-game; each test shown to fail when its feature is removed.
@@ -117,6 +119,17 @@ on arrival — visible convenience on top of the always-reachable panel.
   **"Only <character>'s notes"** opt-in filter that never gates (AC2/AC4); and
   `PollMapAutoSurface()`, run every frame ahead of the panel-open gate, that opens
   the panel on a real map **transition** into a map with tagged notes (AC3).
+
+**In-game verification (partial — owner, 2026-08-20):** owner ran the CI-built
+`notes.dll` in-game and confirmed **AC1 tagging works on Windows** — a note showed
+`Character: Kyarha` + `Untag character` and `Map tag: 24` + `Untag map`, and
+untagged notes showed the `Tag: this character` / `Tag: this map` affordances
+(screenshot). This exercises the live `ReadCurrentCharacter()` (Identity-JSON
+parse) + `ReadCurrentMapId()` reads that could not be verified off-game.
+**Still pending in-game:** the AC2 filter behaviour and the **AC3 map-transition
+auto-surface** (leave and re-enter a tagged map) — not yet exercised. So the DoD's
+in-game verification is **partially** met (tagging confirmed; filter + auto-surface
+outstanding).
 
 **Deviations / decisions (plainly):**
 - **Auto-surface = open the panel** (AC3's "the panel opens" option), not
