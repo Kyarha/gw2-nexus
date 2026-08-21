@@ -1,6 +1,6 @@
 ---
 status: IN_PROGRESS
-use_cases: [UC-1, UC-6, UC-7, UC-9, UC-10, UC-13]
+use_cases: [UC-1, UC-6, UC-7, UC-9, UC-10, UC-13, UC-15]
 ---
 
 <!-- jig self-defining vocabulary (soft, forward-only): expand each acronym on first use and link the term to docs/memory/glossary.md (or jig's lexicon). See docs/workflow.md "Self-defining vocabulary". -->
@@ -31,6 +31,8 @@ foundation, now with persistence, player-state reads, and a real feature.
 - **UC-7** — share a coordinate from a note into game chat (003-04).
 - **UC-9** — a note auto-appears when you enter the map it belongs to (003-05).
 - **UC-10** — keep notes specific to one character (003-05).
+- **UC-15** — organise notes into categories (003-08; added 2026-08-20 from
+  in-game review, a deliberate scope addition beyond the original MVP set).
 
 **Deliberately out of scope for this spec** (kept small; deferred, not dropped):
 

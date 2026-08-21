@@ -146,6 +146,7 @@ combines place- and character-aware notes, world markers, and account-aware
 - UC-14: A player can make the mouse cursor easier to find in visually busy
   scenes, with a customizable on-screen highlight centered on the actual click
   point.
+- UC-15: A player can organize their notes into categories.
 
 ## Stack
 

@@ -21,8 +21,9 @@ to the note record and category management (create / rename / delete / assign),
 > in-game review (inbox 2026-08-19), not the committed `notes-v1.0` mockup, the
 > 003 vision use-case list, or the current data model. It is numbered **003-08**
 > (003-07, note-cards, is claimed on the unmerged `claude/notes-native-theme-003-06`
-> branch; reusing it would collide). Its use-case trace is an open question — see
-> **Use-case trace** below.
+> branch; reusing it would collide). It is traced to **UC-15** ("A player can
+> organise their notes into categories"), grown into the vision on 2026-08-20 by
+> owner decision — see **Use-case trace** below.
 
 **DoR:**
 - ✅ 003-01 DONE — a persisted, versioned, write-through note record + store
@@ -34,10 +35,12 @@ to the note record and category management (create / rename / delete / assign),
 
 **Acceptance Criteria:**
 
-1. **A note can belong to a category.** The note record carries an **optional**
-   category; a note with none is **"Uncategorized."** Stored behind the schema
-   version (003-01 AC4) with forward migration — an older file loads with every
-   note Uncategorized, never rejected.
+1. **A note can belong to a category.** Categories are **first-class** (A1): the
+   store holds a top-level **ordered category list** (each with a stable id), and a
+   note carries an **optional category-id reference**; a note referencing none is
+   **"Uncategorized."** Stored behind the schema version (003-01 AC4) with forward
+   migration — an older file loads with an empty category list and every note
+   Uncategorized, never rejected.
 2. **Category management (CRUD).** Create a named category, rename it, and delete
    it from the panel. **Deleting a category re-homes its notes to Uncategorized —
    it never deletes notes** (principle #2; no data loss).
@@ -71,26 +74,31 @@ to the note record and category management (create / rename / delete / assign),
 
 ## Assumptions
 
-- **A1 (data model — load-bearing DESIGN decision, unresolved):** whether a
-  category is **(i)** an optional **string on each note**, with the category list
-  *derived* from the distinct values (+ Uncategorized), or **(ii)** a **first-class
-  entity** — a top-level ordered category list with stable ids, supporting *empty*
-  categories, explicit *order*, and *rename* without rewriting every note. The
-  two-pane UX pushes toward **(ii)**: AC2 create yields a category that must show
-  in the left nav *before* any note is in it (an empty category), AC2 rename should
-  not have to touch notes, and a left nav implies a stable order — none of which a
-  purely-derived string list gives cleanly. **Leaning (ii)**, but this is the
-  crux to settle at framing; (i) is simpler and may suffice if empty categories /
-  ordering are dropped from the MVP. Resolved at framing (frame-critique pass).
-- **A2 (schema compatibility):** the bump is expected to be **additive/compatible**
-  — an older file migrates (absent per-note category → Uncategorized; absent
-  top-level category list → empty/derived), exactly as 003-02 (coordinate) and
-  003-05 (context tags) were. So it likely does **not** trigger the deferred
-  version-dispatch hook. It would become **incompatible** only if notes were
-  restructured to *nest under* categories (flat `notes[]` → grouped object), which
-  this slice does **not** require. The inbox flagged this as "genuinely-incompatible
-  → exercises the dispatch hook"; on inspection it is probably additive (as the
-  predicted 003-05 reshape also turned out). Confirmed at implementation.
+- **A1 (data model — RESOLVED 2026-08-20, owner decision): first-class
+  categories.** A category is a **first-class entity** — a top-level *ordered*
+  category list with stable ids, each note referencing a category by id — **not**
+  a derived string tag. This is what the two-pane UX needs: AC2 create yields a
+  category that shows in the left nav *before* any note is in it (an **empty**
+  category), AC2 rename changes one entity without rewriting notes, and the left
+  nav has a stable **order**. The rejected alternative (an optional category
+  *string* per note, list derived from distinct values) is simpler and fully
+  additive but cannot express empty/ordered/cleanly-renamable categories. This is
+  a load-bearing choice with a rejected alternative — at implementation, if the
+  category-entity model (ids, ordering, referential integrity on delete→rehome)
+  proves to carry real design weight, record it as a lightweight decision or an
+  ADR per the reconciliation checklist.
+- **A2 (schema compatibility):** even with first-class categories (A1) the bump is
+  expected to be **additive/compatible** — the new **top-level `categories`
+  ordered list** and the note's optional **category-id** are both new keys; an
+  older file migrates (absent `categories` → empty list; absent per-note
+  category-id → Uncategorized), exactly as 003-02 (coordinate) and 003-05 (context
+  tags) were. So it likely does **not** trigger the deferred version-dispatch hook.
+  It would become **incompatible** only if `notes[]` were restructured to *nest
+  under* categories (flat array → grouped object), which the first-class model does
+  **not** require (notes stay a flat array + a category-id ref). The inbox flagged
+  this as "genuinely-incompatible → exercises the dispatch hook"; on inspection it
+  is probably additive (as the predicted 003-05 reshape also turned out). Confirmed
+  at implementation.
 - **A3 (schema-version ordering vs 003-05):** [003-05](slice-05-context-aware.md)
   (unmerged) bumps schema **v2→v3** (character/map tags). Categories is another
   bump; whichever lands second takes the next integer. This is **not** a logic
@@ -120,12 +128,13 @@ category value on its own, vertical). **003-08b (Interface):** the two-pane
 left-nav + right-content layout on top of 08a's data (vertical: the player now
 navigates categories). Neither half is horizontal phasing.
 
-**Use-case trace (open — product-owner call):** categories/two-pane serves **no**
-use case in spec 003's current `use_cases:` list (UC-1, UC-6, UC-7, UC-9, UC-10,
-UC-13). Three paths (none blocks this DRAFT): (a) cite an existing UC it serves;
-(b) **grow the vision** with a new UC (e.g. "organise notes into categories"),
-appended additively with the next free `UC-N`, and add it to 003's `use_cases:`;
-(c) leave it **untraced** as UI organisation. Surfaced for the owner.
+**Use-case trace (RESOLVED 2026-08-20 — grow the vision):** categories/two-pane
+served no use case in the original 003 set (UC-1, UC-6, UC-7, UC-9, UC-10, UC-13).
+Per owner decision the vision was **grown** with a new goal-level use case —
+**UC-15: "A player can organise their notes into categories"**
+([product-vision.md § Use cases](../../product-vision.md)) — appended additively
+(next free number; near-duplicate-checked against UC-1/9/10/13, none matches) and
+added to spec 003's `use_cases:` frontmatter. This slice delivers UC-15.
 
 **Relationship to 003-05 (not the same axis):** categories are **manual, explicit**
 grouping; 003-05 context tags are **automatic** surface-by-character/map. They are
