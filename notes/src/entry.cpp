@@ -169,6 +169,10 @@ std::vector<char>& BufferFor(const notes::Note& note)
 // (never persisted) and are cleared when their note is committed/removed.
 std::string g_EditingId;
 std::string g_ConfirmDeleteId;
+// AC6: clearing a stamped coordinate is a two-step confirm — a one-click Clear
+// once wiped a coordinate the owner meant to keep. Names the note showing its
+// clear-coordinate confirm strip (UI-only, never persisted).
+std::string g_ConfirmClearId;
 
 // Render one note as a themed card (slice 003-07). Read-only by default (title +
 // body + coordinate), with a pencil that opens the inline editor and a trash that
@@ -236,12 +240,14 @@ void RenderNoteCard(const notes::Note& note,
         {
             g_EditingId = note.id;
             g_ConfirmDeleteId.clear();
+            g_ConfirmClearId.clear();
         }
         ImGui::SetCursorScreenPos(ImVec2(ix + icon + igap, irow.y));
         if (th::IconButton("##del", icon, th::GlyphIcon::Trash, pal))
         {
             g_ConfirmDeleteId = (g_ConfirmDeleteId == note.id) ? std::string{}
                                                                : note.id;
+            g_ConfirmClearId.clear(); // don't stack two confirm strips at once
         }
         // Continue the title/body below the icon row.
         ImGui::SetCursorScreenPos(ImVec2(irow.x, irow.y + icon + 4.0f));
@@ -276,10 +282,12 @@ void RenderNoteCard(const notes::Note& note,
                 notes::format_coordinate(*note.coordinate).c_str());
             ImGui::PopStyleColor();
             ImGui::SameLine();
+            // AC6: Clear is destructive (a stamped coordinate can't be recovered),
+            // so it opens a confirm strip rather than wiping on the first click.
             if (ImGui::SmallButton("Clear"))
             {
-                g_Store->clear_coordinate(note.id);
-                if (g_ShowOnMapId == note.id) { g_ShowOnMapId.clear(); }
+                g_ConfirmClearId = (g_ConfirmClearId == note.id) ? std::string{}
+                                                                 : note.id;
             }
 
             // --- 003-04: coordinate actions (only offered when set, AC3) -------
@@ -315,6 +323,29 @@ void RenderNoteCard(const notes::Note& note,
             else
             {
                 ImGui::TextDisabled("Show on map (unavailable)");
+            }
+
+            // AC6 confirm strip: a stamped coordinate is destroyed for good, so
+            // the actual clear only happens on the second, explicit click.
+            if (g_ConfirmClearId == note.id)
+            {
+                ImGui::Dummy(ImVec2(0.0f, 4.0f));
+                ImGui::PushStyleColor(ImGuiCol_Text, th::to_vec4(pal.danger_text));
+                ImGui::TextUnformatted("Clear this coordinate? This can't be undone.");
+                ImGui::PopStyleColor();
+                ImGui::PushStyleColor(ImGuiCol_Button, th::to_vec4(pal.danger_fill));
+                ImGui::PushStyleColor(ImGuiCol_ButtonHovered, th::to_vec4(pal.danger_line));
+                ImGui::PushStyleColor(ImGuiCol_ButtonActive, th::to_vec4(pal.danger_fill));
+                ImGui::PushStyleColor(ImGuiCol_Text, th::to_vec4(pal.danger_text_2));
+                if (ImGui::Button("Clear coordinate"))
+                {
+                    g_Store->clear_coordinate(note.id);
+                    if (g_ShowOnMapId == note.id) { g_ShowOnMapId.clear(); }
+                    g_ConfirmClearId.clear();
+                }
+                ImGui::PopStyleColor(4);
+                ImGui::SameLine();
+                if (ImGui::Button("Keep")) { g_ConfirmClearId.clear(); }
             }
         }
         const std::optional<notes::Coordinate> here = ReadCurrentCoordinate();
@@ -443,6 +474,7 @@ void RenderPanel()
     {
         g_EditingId = g_Store->add(std::string{});
         g_ConfirmDeleteId.clear();
+        g_ConfirmClearId.clear();
     }
     ImGui::PopStyleColor();
     ImGui::PopStyleVar();
@@ -506,6 +538,7 @@ void RenderPanel()
         g_Store->remove(to_delete);
         g_EditBuffers.erase(to_delete);
         if (g_ConfirmDeleteId == to_delete) { g_ConfirmDeleteId.clear(); }
+        if (g_ConfirmClearId == to_delete)  { g_ConfirmClearId.clear(); }
         if (g_EditingId == to_delete)       { g_EditingId.clear(); }
         if (g_ShowOnMapId == to_delete)     { g_ShowOnMapId.clear(); }
     }
@@ -692,6 +725,9 @@ void AddonUnload()
     delete g_Store;
     g_Store = nullptr;
     g_EditBuffers.clear();
+    g_ConfirmDeleteId.clear();
+    g_ConfirmClearId.clear();
+    g_EditingId.clear();
     g_ShowOnMapId.clear();
     g_FilterThisCharacter = false;
     g_LastMapId.reset();
