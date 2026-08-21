@@ -32,9 +32,14 @@ namespace {
 constexpr const char* kKeybindId     = "KB_CURSOR_TOGGLE";
 constexpr const char* kQuickAccessId = "QA_CURSOR";
 constexpr const char* kWindowName    = "Cursor Finder";
-// Default hotkey: plain "C" (from the v1.0 design). The player can rebind it in
-// the Nexus keybind UI.
-constexpr const char* kDefaultBind   = "C";
+// Registered UNBOUND. "(null)" is Nexus's sentinel for "no default combo": the
+// keybind identifier still exists (so the quick-access toolbar icon, which
+// invokes this identifier, keeps working, and the bind shows up in Nexus's
+// keybind settings), but nothing is bound out of the box. The v1.0 design's plain
+// "C" is a bad default — GW2 players remap the keyboard freely, so "C" almost
+// certainly collides with a game action. Users who want a hotkey assign one
+// themselves in the Nexus keybind UI.
+constexpr const char* kDefaultBind   = "(null)";
 
 // Nexus built-in toolbar icons. The gold badge logo from the design is bundled
 // in slice 004-02 (art pipeline); a built-in keeps 004-01 free of bundled art.
