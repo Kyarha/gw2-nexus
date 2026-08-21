@@ -520,7 +520,9 @@ void AddonRender()
 
         // Native title bar replaces ImGui's default; clicking its close X closes
         // the panel, matching the previous window-close affordance.
-        if (shared::theme::TitleBar("Cursor Finder", "Pointer highlight", "C",
+        // No hotkey pill: the toggle ships with no default bind (kDefaultBind),
+        // so advertising "C" here would imply a binding that does not exist.
+        if (shared::theme::TitleBar("Cursor Finder", "Pointer highlight", nullptr,
                                     pal, met))
         {
             g_PanelOpen = false;
