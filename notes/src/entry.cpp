@@ -35,7 +35,14 @@ namespace {
 constexpr const char* kKeybindId     = "KB_NOTES_TOGGLE";
 constexpr const char* kQuickAccessId = "QA_NOTES";
 constexpr const char* kWindowName    = "Notes";
-constexpr const char* kDefaultBind   = "ALT+SHIFT+N";
+// Registered UNBOUND. "(null)" is Nexus's sentinel for "no default combo": the
+// keybind identifier still exists (so the quick-access toolbar icon, which opens
+// the panel by invoking this identifier, keeps working, and the bind shows up in
+// Nexus's keybind settings), but nothing is bound out of the box. Shipping a
+// hardcoded default (e.g. ALT+SHIFT+N) is a bad bet — GW2 players fully remap the
+// keyboard, so any default we pick risks colliding with a game action. Users who
+// want a hotkey assign one themselves in Nexus.
+constexpr const char* kDefaultBind   = "(null)";
 
 // Nexus built-in toolbar icons. A themed Notes icon is deferred to the native-
 // look slice; using a built-in keeps 003-01 free of bundled art.
@@ -273,11 +280,10 @@ void RenderPanel()
     const shared::theme::Palette pal = shared::theme::gw2_palette();
 
     // Native title bar (003-06): replaces ImGui's default bar (the window uses
-    // NoTitleBar). Icon + gold title + subtitle + hotkey pill + close, drawn by
-    // the shared theme. The close affordance lives here now.
-    static const std::string kHotkeyPill = std::string("HOTKEY  ") + kDefaultBind;
-    if (shared::theme::TitleBar("Notes", "Personal organiser",
-                                kHotkeyPill.c_str(), pal))
+    // NoTitleBar). Icon + gold title + subtitle + close, drawn by the shared
+    // theme. The close affordance lives here now. No hotkey pill: the toggle ships
+    // unbound (see kDefaultBind), so there is no default combo to advertise.
+    if (shared::theme::TitleBar("Notes", "Personal organiser", nullptr, pal))
     {
         g_PanelOpen = false;
     }
@@ -379,7 +385,19 @@ void AddonRender()
 // Keybind handler (INPUTBINDS_PROCESS): toggle the panel on press.
 void OnKeybind(const char* /*aIdentifier*/, bool aIsRelease)
 {
-    if (!aIsRelease) { g_PanelOpen = !g_PanelOpen; }
+    if (!aIsRelease)
+    {
+        // DIAGNOSTIC (auto-open-on-map-load hunt): log every toggle so the Nexus
+        // log shows whether the panel opens via this keybind path at all. The bind
+        // ships unbound, so a toggle here means something is actively invoking it.
+        if (g_API && g_API->Log)
+        {
+            g_API->Log(LOGL_INFO, "gw2-nexus",
+                       g_PanelOpen ? "notes: keybind toggle -> CLOSING"
+                                   : "notes: keybind toggle -> OPENING");
+        }
+        g_PanelOpen = !g_PanelOpen;
+    }
 }
 
 void AddonLoad(AddonAPI_t* aApi)

@@ -8,5 +8,4 @@
 
 | ID | slug | severity | tier | status | reproduces? | regression test | claimed_by | escalated_to | Notes |
 |----|------|----------|------|--------|-------------|-----------------|------------|--------------|-------|
-
-<!-- Regenerate with `bug.py status-board`. Add rows as bugs are reported. -->
+| 001 | notes-mapload-autoopen-crash | high | gnarly | DIAGNOSING | no |  | claude/notes-native-theme-003-06 |  |  |
