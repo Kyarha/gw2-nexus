@@ -100,6 +100,46 @@ Redline inputs (committed with this slice):
 player opens looks native — themed frame, title bar, gold section heads — a
 visible improvement they see immediately, not an internal refactor.
 
+### Resume state (session handoff — 2026-08-21)
+
+Where 004-06 stands, for a fresh session with no chat history. Branch:
+`claude/cursor-fidelity-004-06` (worktree off `origin/main`; pushed).
+
+**Done (committed + pushed):**
+- Reframed slice measure-only → native-theme build. Corrected `fidelity-map.md`
+  (panel was default ImGui, not themed).
+- Wired `shared/theme` into `cursor/src/entry.cpp`: `PushPanelStyle` + native
+  `TitleBar` + `DrawThemedFrame`, gold section heads, themed preset highlight.
+- Fixed scrollbar-over-close-X (outer `NoScrollbar` + transparent-bg child body).
+- **In-game capture confirms the theme now renders** (gold title, brass frame,
+  themed controls, cyan marker intact).
+
+**NOT done — the actual fidelity loop was never run:**
+- `servo:design-eval` has **not** been run. There is **no score and no design
+  attestation** yet. AC5 is open.
+- The panel is still **single-column**; the redline is **two-column** (preview
+  left / settings right). That layout gap is unmeasured and unclosed (AC3).
+
+**Next session — pick up here:**
+1. Capture the *current themed* `cursor.dll` panel in the default resting state
+   (screen §0), 1×, cropped to the panel.
+2. Compose `servo:design-eval` scoring the capture vs
+   `redlines/cursor-settings.render.png`. **Encode the approved divergences from
+   `fidelity-map.md` in the rubric** (world backdrop, Nexus rail, and the whole
+   BEHAVIOUR section — 004-03/004-05 features, slice A3) or they cap the score.
+3. Read the deltas → close the in-scope gap (two-column layout, spacing), styling
+   only (AC6 feature-freeze). Re-capture → re-score until threshold.
+4. Record the passing verdict as the design attestation; then reviewer +
+   reconciliation → DONE.
+
+**Note:** 004-07 (freeze-after-drag) rides on this same branch — its off-game
+tests are green but it still needs in-game confirmation of the drag-button mask
+(A1) and freeze feel (A2) before its own review/reconciliation.
+
+**Open thread:** earlier the built `cursor.dll` vanished from the addons folder
+(file gone from disk, not a load error). Cause never confirmed — likely a missing
+file / AV quarantine. If it recurs, check the Nexus log for a crash/disable line.
+
 ### Deviation log (after reconciliation)
 
 _TODO at reconciliation._
